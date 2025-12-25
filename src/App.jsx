@@ -130,15 +130,18 @@ const App = () => {
     setClearCartDialogVisible(false);
   };
 
-  const proceedWithCheckout = async (paymentChannelId) => {
-    if (cart.length === 0) return;
+  const proceedWithCheckout = async (paymentChannelId, cartToCheckout) => {
+    if (cartToCheckout.length === 0) return;
 
-    const totalAmount = cart
-      .reduce((sum, item) => sum + (item.isGift ? 0 : item.price * item.quantity), 0);
+    const paymentChannel = await db.paymentChannels.get(paymentChannelId);
+
+    const totalAmount = (paymentChannel && paymentChannel.name === '赠送')
+      ? 0
+      : cartToCheckout.reduce((sum, item) => sum + (item.isGift ? 0 : item.price * item.quantity), 0);
 
     try {
       await db.orders.add({
-        items: cart.map(({ cartItemId, ...rest }) => rest),
+        items: cartToCheckout.map(({ cartItemId, ...rest }) => rest),
         paymentChannelId,
         totalAmount,
         status: 'completed',
@@ -146,7 +149,7 @@ const App = () => {
       });
 
       await db.transaction('rw', db.products, async () => {
-        for (const item of cart) {
+        for (const item of cartToCheckout) {
           const product = await db.products.get(item.productId);
           if (product) {
             let newStock = product.stock;
@@ -191,8 +194,15 @@ const App = () => {
   const handleCheckout = async (paymentChannelId) => {
     if (cart.length === 0) return;
 
+    const paymentChannel = await db.paymentChannels.get(paymentChannelId);
+    let cartForCheckout = [...cart];
+
+    if (paymentChannel && paymentChannel.name === '赠送') {
+      cartForCheckout = cart.map(item => ({ ...item, isGift: false }));
+    }
+
     const itemsWithStockIssues = [];
-    for (const item of cart) {
+    for (const item of cartForCheckout) {
       const product = await db.products.get(item.productId);
       if (!product) continue;
 
@@ -216,10 +226,10 @@ const App = () => {
 
     if (itemsWithStockIssues.length > 0) {
       setOutOfStockItems(itemsWithStockIssues);
-      setCheckoutArgs(paymentChannelId);
+      setCheckoutArgs({ paymentChannelId, cartForCheckout });
       setStockWarningDialogOpen(true);
     } else {
-      await proceedWithCheckout(paymentChannelId);
+      await proceedWithCheckout(paymentChannelId, cartForCheckout);
     }
   };
 
@@ -326,7 +336,7 @@ const App = () => {
           <Button onClick={() => setStockWarningDialogOpen(false)}>取消</Button>
           <Button onClick={async () => {
             setStockWarningDialogOpen(false);
-            await proceedWithCheckout(checkoutArgs);
+            await proceedWithCheckout(checkoutArgs.paymentChannelId, checkoutArgs.cartForCheckout);
           }} color="warning">
             继续结算
           </Button>
