@@ -176,7 +176,7 @@ const EditProductModal = ({ open, onClose, product }) => {
             }}
             fullWidth
             disabled={showAttributes}
-            helperText={showAttributes ? "勾选子属性后，请在下方设置各规格的库存" : "设置商品总库存。添加子属性后，此项将无效。"}
+            helperText={showAttributes ? "勾选子属性后，请在下方设置各规格的库存" : "设置商品总库存。添加子属性后，此项将无效，请设置各规格的库存。"}
           />
 
           <TextField label="文字描述" multiline rows={3} value={description} onChange={e => setDescription(e.target.value)} fullWidth />
