@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
+import { NotificationProvider } from './NotificationContext';
 
 // Mocking the db for all tests in this file
 vi.mock('./db', () => ({
@@ -16,7 +17,11 @@ vi.mock('./db', () => ({
 
 describe('App', () => {
   it('renders the bottom navigation bar correctly', () => {
-    render(<App />);
+    render(
+      <NotificationProvider>
+        <App />
+      </NotificationProvider>
+    );
     expect(screen.getByRole('button', { name: /记账/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /库存/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /订单/i })).toBeInTheDocument();

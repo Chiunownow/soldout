@@ -5,29 +5,34 @@ import { Box, Typography, Button, List, ListItem, ListItemText, IconButton } fro
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
-import AttributeSelector from './AttributeSelector';
 import ProductPickerDialog from './ProductPickerDialog';
 import PaymentPickerDialog from './PaymentPickerDialog';
-
+import VariantSelector from './VariantSelector'; // Import the new VariantSelector
 
 const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onClearCart, onCheckout }) => {
   const paymentChannels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   
   const [productPickerVisible, setProductPickerVisible] = useState(false);
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
-  const [attributeSelectorVisible, setAttributeSelectorVisible] = useState(false);
-  const [productForAttrSelection, setProductForAttrSelection] = useState(null);
+  const [variantSelectorVisible, setVariantSelectorVisible] = useState(false); // Renamed state
+  const [productForVariantSelection, setProductForVariantSelection] = useState(null); // Renamed state
 
   const handleProductSelect = (productId) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    if (product.attributes && product.attributes.length > 0 && product.attributes[0].value) {
-      setProductForAttrSelection(product);
-      setAttributeSelectorVisible(true);
+    // Check for variants instead of attributes
+    if (product.variants && product.variants.length > 0) {
+      setProductForVariantSelection(product);
+      setVariantSelectorVisible(true);
     } else {
-      onAddToCart(product);
+      // For simple products, pass the product itself (no specific variant)
+      onAddToCart(product, null);
     }
+  };
+
+  const handleVariantSelect = (product, variant) => {
+    onAddToCart(product, variant);
   };
 
   const calculateTotal = () => {
@@ -92,7 +97,10 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
                 <IconButton onClick={() => onGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
                   <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
                 </IconButton>
-                <ListItemText primary={item.name} />
+                <ListItemText
+                  primary={item.name}
+                  secondary={item.variantName || null} // Display variant name if it exists
+                />
               </ListItem>
             ))}
           </List>
@@ -125,13 +133,11 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
         onSelectProduct={handleProductSelect}
       />
 
-      <AttributeSelector
-        open={attributeSelectorVisible}
-        product={productForAttrSelection}
-        onClose={() => setAttributeSelectorVisible(false)}
-        onConfirm={(product, selectedAttrs) => {
-            onAddToCart(product, selectedAttrs);
-        }}
+      <VariantSelector
+        open={variantSelectorVisible}
+        product={productForVariantSelection}
+        onClose={() => setVariantSelectorVisible(false)}
+        onSelect={handleVariantSelect}
       />
 
       <PaymentPickerDialog

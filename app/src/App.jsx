@@ -47,27 +47,29 @@ const App = () => {
     }
   }, []);
 
-  const handleAddToCart = useCallback((product, selectedAttributes = []) => {
-    const attributesString = selectedAttributes.map(a => `${a.key}:${a.value}`).sort().join('|');
-    const cartItemId = `${product.id}-${attributesString}`;
+  const handleAddToCart = useCallback((product, variant = null) => {
+    // If a variant is selected, the cart item ID is based on the variant's name
+    // Otherwise, for simple products, it's based on the product ID
+    const cartItemId = variant ? `${product.id}-${variant.name}` : `${product.id}`;
 
     let newCart;
     const existingItemIndex = cart.findIndex(item => item.cartItemId === cartItemId);
 
     if (existingItemIndex !== -1) {
+      // Increase quantity if item already in cart
       newCart = cart.map((item, index) =>
         index === existingItemIndex ? { ...item, quantity: item.quantity + 1 } : item
       );
     } else {
-      const attributeLabels = selectedAttributes.map(a => a.value).join(' ');
+      // Add new item to cart
       newCart = [...cart, {
         cartItemId,
         productId: product.id,
-        name: `${product.name} ${attributeLabels}`,
-        price: product.price,
+        name: product.name,
+        price: product.price, // Assuming price is the same for all variants
         quantity: 1,
         isGift: false,
-        selectedAttributes,
+        variantName: variant ? variant.name : null, // Store variant name
       }];
     }
     setCart(newCart);
@@ -77,6 +79,7 @@ const App = () => {
   const handleQuantityChange = useCallback((cartItemId, quantity) => {
     let newCart;
     if (quantity <= 0) {
+      // Remove item if quantity is zero or less
       newCart = cart.filter(item => item.cartItemId !== cartItemId);
     } else {
       newCart = cart.map(item =>
@@ -114,22 +117,51 @@ const App = () => {
       .reduce((sum, item) => sum + (item.isGift ? 0 : item.price * item.quantity), 0);
 
     try {
+      // Save the order
       await db.orders.add({
-        items: cart.map(({ cartItemId, ...rest }) => rest),
+        items: cart.map(({ cartItemId, ...rest }) => rest), // Remove cartItemId before saving to order
         paymentChannelId,
         totalAmount,
         status: 'completed',
         createdAt: new Date(),
       });
 
+      // Update product stock in a single transaction
       await db.transaction('rw', db.products, async () => {
         for (const item of cart) {
-          await db.products.where('id').equals(item.productId).modify(p => {
-            p.stock -= item.quantity;
-          });
+          const product = await db.products.get(item.productId);
+          if (product) {
+            let newStock = product.stock;
+            let newVariants = product.variants;
+
+            if (item.variantName && product.variants) {
+              // Product with variants
+              let variantFound = false;
+              newVariants = product.variants.map(v => {
+                if (v.name === item.variantName) {
+                  variantFound = true;
+                  return { ...v, stock: v.stock - item.quantity };
+                }
+                return v;
+              });
+
+              if (variantFound) {
+                 newStock = newVariants.reduce((acc, v) => acc + v.stock, 0);
+                 await db.products.update(item.productId, {
+                   variants: newVariants,
+                   stock: newStock,
+                 });
+              }
+            } else {
+              // Simple product
+              newStock = product.stock - item.quantity;
+              await db.products.update(item.productId, { stock: newStock });
+            }
+          }
         }
       });
 
+      // Clear the cart
       const newCart = [];
       setCart(newCart);
       saveCartToDb(newCart);
@@ -137,7 +169,7 @@ const App = () => {
 
     } catch (error) {
       console.error('Failed to checkout:', error);
-      showNotification('结算失败，请重试', 'error');
+      showNotification(`结算失败: ${error.message}`, 'error');
     }
   };
 

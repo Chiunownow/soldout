@@ -49,11 +49,20 @@ const Inventory = () => {
                     <Typography component="span" variant="body2" color="text.primary">
                       库存: {product.stock || 0}
                     </Typography>
-                    {product.attributes && product.attributes.map(attr => (
-                      <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block' }} key={attr.key}>
-                        {`${attr.key}: ${attr.value}`}
-                      </Typography>
-                    ))}
+                    {product.variants && product.variants.length > 0 ? (
+                      <Box component="div" sx={{ mt: 1, pl: 1, borderLeft: '2px solid #eee' }}>
+                        {product.variants.map((variant, index) => (
+                          <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {variant.name}
+                            </Typography>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              库存: {variant.stock}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : null}
                   </Box>
                 }
               />
