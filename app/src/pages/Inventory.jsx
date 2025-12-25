@@ -76,7 +76,7 @@ const Inventory = () => {
           ))}
         </List>
       ) : (
-        <Empty description="还没有产品，快去添加吧" />
+        <Empty description={<div><p>还没有产品，快去添加吧</p><p>小贴士：产品列表支持左滑编辑和删除哦！</p></div>} />
       )}
       <FloatingBubble
         style={{

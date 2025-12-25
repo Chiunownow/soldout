@@ -1,45 +1,61 @@
-import React, { useEffect } from 'react';
-import { Modal, Form, Input, Button, Space, Toast } from 'antd-mobile';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Modal, Input, Button, Toast } from 'antd-mobile';
 import { AddOutline, MinusCircleOutline } from 'antd-mobile-icons';
 import { db } from '../db';
+import './ManualForm.css';
 
 const EditProductModal = ({ visible, onClose, product }) => {
-  const [form] = Form.useForm();
+    const [name, setName] = useState('');
+    const [price, setPrice] = useState('');
+    const [stock, setStock] = useState('');
+    const [description, setDescription] = useState('');
+    const [attributes, setAttributes] = useState([]);
+    
+      useEffect(() => {
+        if (product && visible) {
+          setName(product.name || '');
+          setPrice(product.price?.toString() || '');
+          setStock(product.stock?.toString() || '');
+          setDescription(product.description || '');
+          setAttributes(product.attributes || []);
+        }
+      }, [product, visible]);
 
-  useEffect(() => {
-    if (visible && product) {
-      form.setFieldsValue(product);
-    } else {
-      form.resetFields();
+  const handleSubmit = async () => {
+    if (!name || !price || !stock) {
+      Toast.show({ content: '请填写产品名称、价格和库存' });
+      return;
     }
-  }, [visible, product, form]);
 
-  const onFinish = async (values) => {
     try {
-      // Filter out empty attribute key-value pairs
-      const filteredAttributes = values.attributes
-        ? values.attributes.filter(attr => attr && attr.key && attr.value)
-        : [];
-
+      const filteredAttributes = attributes.filter(attr => attr.key && attr.value);
       await db.products.update(product.id, {
-        name: values.name,
-        price: parseFloat(values.price),
-        stock: parseInt(values.stock, 10),
-        description: values.description,
+        name,
+        price: parseFloat(price),
+        stock: parseInt(stock, 10),
+        description,
         attributes: filteredAttributes,
       });
-      Toast.show({
-        icon: 'success',
-        content: '产品更新成功',
-      });
+      Toast.show({ icon: 'success', content: '产品更新成功' });
       onClose();
     } catch (error) {
       console.error('Failed to update product:', error);
-      Toast.show({
-        icon: 'fail',
-        content: '产品更新失败',
-      });
+      Toast.show({ icon: 'fail', content: '产品更新失败' });
     }
+  };
+
+  const addAttributeField = () => {
+    setAttributes([...attributes, { key: '', value: '' }]);
+  };
+
+  const removeAttributeField = (index) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
+  };
+
+  const handleAttributeChange = (index, field, value) => {
+    const newAttributes = [...attributes];
+    newAttributes[index][field] = value;
+    setAttributes(newAttributes);
   };
 
   return (
@@ -48,85 +64,60 @@ const EditProductModal = ({ visible, onClose, product }) => {
       onClose={onClose}
       title="编辑产品"
       content={
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-          footer={
-            <Button block type="submit" color="primary">
-              保存更改
-            </Button>
-          }
-        >
-          <Form.Item
-            name="name"
-            label="产品名称"
-            rules={[{ required: true, message: '请输入产品名称' }]}
-          >
-            <Input placeholder="例如：T恤" />
-          </Form.Item>
-          <Form.Item
-            name="price"
-            label="销售价格"
-            rules={[{ required: true, message: '请输入销售价格' }]}
-          >
-            <Input placeholder="例如：99.00" />
-          </Form.Item>
-          <Form.Item
-            name="stock"
-            label="当前库存"
-            rules={[{ required: true, message: '请输入当前库存' }]}
-          >
-            <Input placeholder="例如：100" />
-          </Form.Item>
-          <Form.Item name="description" label="文字描述">
-            <Input.TextArea placeholder="可选" />
-          </Form.Item>
-
-          <Form.List name="attributes">
-            {({ add, remove, fields }) => {
-              return (
-                <>
-                  {fields.map((field, index) => {
-                    return (
-                      <Space key={field.key} style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-                        <Form.Item
-                          {...field}
-                          label={index === 0 ? '子属性' : ''}
-                          name={[field.name, 'key']}
-                          rules={[{ required: true, message: '请输入属性名称' }]}
-                          style={{ flex: 1, marginRight: '8px' }}
-                        >
-                          <Input placeholder="属性名称 (如: 颜色)" />
-                        </Form.Item>
-                        <Form.Item
-                          {...field}
-                          label={index === 0 ? '属性值' : ''}
-                          name={[field.name, 'value']}
-                          rules={[{ required: true, message: '请输入属性值' }]}
-                          style={{ flex: 1 }}
-                        >
-                          <Input placeholder="属性值 (如: 红色)" />
-                        </Form.Item>
-                        <MinusCircleOutline onClick={() => remove(field.name)} style={{ marginLeft: '8px', flexShrink: 0 }} />
-                      </Space >
-                    )
-                  })}
-                  <Button
-                    onClick={() => add()}
-                    block
-                    fill='outline'
-                    size='small'
-                    icon={<AddOutline />}
-                  >
-                    添加子属性
-                  </Button>
-                </>
-              )
-            }}
-          </Form.List>
-        </Form>
+        <div className="manual-form">
+            <div className="form-item">
+              <label>产品名称</label>
+              <Input placeholder="例如：T恤" value={name} onChange={setName} />
+            </div>
+            <div className="form-item">
+              <label>销售价格</label>
+              <Input placeholder="例如：99.00" type="number" value={price} onChange={setPrice} />
+            </div>
+            <div className="form-item">
+              <label>当前库存</label>
+              <Input placeholder="例如：100" type="number" value={stock} onChange={setStock} />
+            </div>
+            <div className="form-item">
+              <label>文字描述</label>
+              <textarea
+                className="manual-textarea"
+                placeholder="可选"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
+            </div>
+            <div className="form-item">
+              <label>子属性</label>
+              {attributes.map((attr, index) => (
+                <div key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: 8, width: '100%' }}>
+                  <Input
+                    placeholder="属性名称 (如: 颜色)"
+                    value={attr.key}
+                    onChange={val => handleAttributeChange(index, 'key', val)}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Input
+                    placeholder="属性值 (如: 红色)"
+                    value={attr.value}
+                    onChange={val => handleAttributeChange(index, 'value', val)}
+                  />
+                  <MinusCircleOutline data-testid="remove-attribute-btn" onClick={() => removeAttributeField(index)} style={{ marginLeft: 8, flexShrink: 0 }} />
+                </div>
+              ))}
+              <Button onClick={addAttributeField} block fill="outline" size="small">
+                <AddOutline /> 添加子属性
+              </Button>
+            </div>
+          </div>
       }
+      actions={[
+        {
+          key: 'submit',
+          text: '保存更改',
+          primary: true,
+          onClick: handleSubmit,
+        },
+      ]}
     />
   );
 };
