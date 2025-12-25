@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Chip, DialogContentText } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import GitHubIcon from '@mui/icons-material/GitHub'; // Import GitHubIcon
+import GitHubIcon from '@mui/icons-material/GitHub';
 import { useNotification } from '../NotificationContext';
 import useLongPress from '../useLongPress';
 import PageHeader from '../components/PageHeader';
@@ -15,6 +15,8 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
   const [newChannelName, setNewChannelName] = useState('');
   const [firstClearConfirmOpen, setFirstClearConfirmOpen] = useState(false);
   const [secondClearConfirmOpen, setSecondClearConfirmOpen] = useState(false);
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [importData, setImportData] = useState(null);
 
   const longPressEvents = useLongPress(() => {
     setFirstClearConfirmOpen(true);
@@ -89,6 +91,96 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
     }
   };
 
+  const handleExportJson = async () => {
+    showNotification('正在导出备份...', 'info');
+    try {
+      const products = await db.products.toArray();
+      const orders = await db.orders.toArray();
+      const channels = await db.paymentChannels.toArray();
+      
+      const backupData = {
+        products,
+        orders,
+        paymentChannels: channels,
+        __soldout_backup_version__: '1.0', 
+      };
+
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `sold-out-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+      showNotification('备份文件已导出', 'success');
+
+    } catch (error) {
+      console.error('Failed to export JSON data:', error);
+      showNotification('导出失败', 'error');
+    }
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data && data.products && data.orders && data.paymentChannels && data.__soldout_backup_version__) {
+          setImportData(data);
+          setImportConfirmOpen(true);
+        } else {
+          showNotification('文件格式无效或已损坏', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to parse import file:', error);
+        showNotification('无法解析文件', 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = null;
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importData) return;
+
+    showNotification('正在导入数据，请稍候...', 'info');
+    try {
+      await db.transaction('rw', db.products, db.orders, db.paymentChannels, async () => {
+        await Promise.all([
+          db.products.clear(),
+          db.orders.clear(),
+          db.paymentChannels.clear(),
+        ]);
+        await Promise.all([
+          db.products.bulkAdd(importData.products),
+          db.orders.bulkAdd(importData.orders),
+          db.paymentChannels.bulkAdd(importData.paymentChannels),
+        ]);
+      });
+      
+      setImportConfirmOpen(false);
+      setImportData(null);
+      showNotification('数据导入成功，应用将刷新', 'success');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Failed to import data:', error);
+      showNotification(`导入失败: ${error.message}`, 'error');
+      setImportConfirmOpen(false);
+      setImportData(null);
+    }
+  };
+
   const handleClearAllData = async () => {
     try {
         setSecondClearConfirmOpen(false);
@@ -150,11 +242,20 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
         <Card sx={{ mt: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>数据管理</Typography>
-            <Button fullWidth variant="contained" onClick={handleExport} sx={{ mb: 2 }}>
-              导出全部订单 (CSV)
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <Button fullWidth variant="contained" onClick={handleExport}>
+                导出订单表格 (CSV)
+              </Button>
+              <Button fullWidth variant="contained" color="secondary" onClick={handleExportJson}>
+                导出备份数据 (JSON)
+              </Button>
+            </Box>
+            <Button fullWidth variant="outlined" component="label">
+              导入备份数据 (JSON)
+              <input type="file" hidden accept=".json" onChange={handleFileChange} />
             </Button>
-            <Typography variant="caption" color="text.secondary">
-              数据保存在浏览器中，建议定期导出以防丢失。
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              “导出备份”会生成一个包含所有产品、订单和设置的完整备份文件。“导入备份”会覆盖当前所有数据。
             </Typography>
           </CardContent>
         </Card>
@@ -207,6 +308,22 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
         <DialogActions>
           <Button onClick={() => setAddChannelOpen(false)}>取消</Button>
           <Button onClick={handleAddChannel}>添加</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import Confirmation Dialog */}
+      <Dialog open={importConfirmOpen} onClose={() => setImportConfirmOpen(false)}>
+        <DialogTitle>确认导入数据</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                您确定要导入备份数据吗？这将 **覆盖** 当前应用中的所有产品、订单和设置。此操作无法撤销。
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportConfirmOpen(false)}>取消</Button>
+          <Button onClick={handleConfirmImport} color="warning">
+            确认导入
+          </Button>
         </DialogActions>
       </Dialog>
 
