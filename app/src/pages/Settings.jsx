@@ -5,6 +5,7 @@ import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListI
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useNotification } from '../NotificationContext';
 import useLongPress from '../useLongPress';
+import PageHeader from '../components/PageHeader';
 
 const Settings = () => {
   const { showNotification } = useNotification();
@@ -55,7 +56,7 @@ const Settings = () => {
       const allChannels = await db.paymentChannels.toArray();
       const channelMap = new Map(allChannels.map(c => [c.id, c.name]));
       let csvContent = "data:text/csv;charset=utf-8,";
-      const headers = ["订单ID", "创建时间", "总金额", "状态", "支付渠道", "商品名称", "数量", "单价", "是否赠品"];
+      const headers = ["订单ID", "创建时间", "总金额", "状态", "支付渠道", "商品名称", "规格", "数量", "单价", "是否赠品"];
       csvContent += headers.join(",") + "\r\n";
       allOrders.forEach(order => {
         order.items.forEach(item => {
@@ -65,7 +66,8 @@ const Settings = () => {
             order.totalAmount.toFixed(2),
             order.status,
             channelMap.get(order.paymentChannelId) || '未知',
-            `"${item.name.replace(/"/g, '""')}"`,
+            `"${item.name ? item.name.replace(/"/g, '""') : ''}"`, 
+            item.variantName || '',
             item.quantity,
             item.price.toFixed(2),
             item.isGift ? '是' : '否'
@@ -90,6 +92,7 @@ const Settings = () => {
     try {
         setSecondClearConfirmOpen(false);
         await db.delete();
+        localStorage.removeItem('hasSeenWelcome'); 
         showNotification('所有数据已清除，应用将刷新', 'success');
         setTimeout(() => {
             window.location.reload();
@@ -101,53 +104,59 @@ const Settings = () => {
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>
-        设置
-      </Typography>
-      <Card>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>支付渠道管理</Typography>
-          <List>
-            {channels && channels.map(channel => (
-              <ListItem
-                key={channel.id}
-                secondaryAction={
-                  !channel.isSystemChannel && (
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  )
-                }
-              >
-                <ListItemText primary={channel.name} />
-                {channel.isSystemChannel && <Chip label="系统" size="small" />}
-              </ListItem>
-            ))}
-          </List>
-          <Button fullWidth variant="outlined" onClick={() => setAddChannelOpen(true)} sx={{ mt: 2 }}>
-            添加新渠道
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card sx={{ mt: 2 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>数据管理</Typography>
-          <Button fullWidth variant="contained" onClick={handleExport}>
-            导出全部订单 (CSV)
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card sx={{ mt: 2 }}>
-        <CardContent>
-            <Typography variant="h6" color="error" gutterBottom>危险区域</Typography>
-            <Button fullWidth variant="contained" color="error" {...longPressEvents}>
-                长按清空所有数据
+    <>
+      <PageHeader title="设置" />
+      <Box sx={{ p: 2 }}>
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>支付渠道管理</Typography>
+            <List>
+              {channels && channels.map(channel => (
+                <ListItem
+                  key={channel.id}
+                  secondaryAction={
+                    !channel.isSystemChannel && (
+                      <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    )
+                  }
+                >
+                  <ListItemText primary={channel.name} />
+                  {channel.isSystemChannel && <Chip label="系统" size="small" />}
+                </ListItem>
+              ))}
+            </List>
+            <Button fullWidth variant="outlined" onClick={() => setAddChannelOpen(true)} sx={{ mt: 2 }}>
+              添加新渠道
             </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mt: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>数据管理</Typography>
+            <Button fullWidth variant="contained" onClick={handleExport} sx={{ mb: 2 }}>
+              导出全部订单 (CSV)
+            </Button>
+            <Typography variant="caption" color="text.secondary">
+              数据保存在浏览器中，建议定期导出以防丢失。
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ mt: 2 }}>
+          <CardContent>
+              <Typography variant="h6" color="error" gutterBottom>危险区域</Typography>
+              <Button fullWidth variant="contained" color="error" {...longPressEvents}>
+                  长按清空所有数据
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                此操作将删除本浏览器内所有产品、订单和设置，且无法恢复。
+              </Typography>
+          </CardContent>
+        </Card>
+      </Box>
       
       {/* Add Channel Dialog */}
       <Dialog open={addChannelOpen} onClose={() => setAddChannelOpen(false)}>
@@ -201,9 +210,8 @@ const Settings = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </>
   );
 };
 
 export default Settings;
-

@@ -7,26 +7,26 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import ProductPickerDialog from './ProductPickerDialog';
 import PaymentPickerDialog from './PaymentPickerDialog';
-import VariantSelector from './VariantSelector'; // Import the new VariantSelector
+import VariantSelector from './VariantSelector';
+
+import PageHeader from '../components/PageHeader';
 
 const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onClearCart, onCheckout }) => {
   const paymentChannels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   
   const [productPickerVisible, setProductPickerVisible] = useState(false);
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
-  const [variantSelectorVisible, setVariantSelectorVisible] = useState(false); // Renamed state
-  const [productForVariantSelection, setProductForVariantSelection] = useState(null); // Renamed state
+  const [variantSelectorVisible, setVariantSelectorVisible] = useState(false);
+  const [productForVariantSelection, setProductForVariantSelection] = useState(null);
 
   const handleProductSelect = (productId) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    // Check for variants instead of attributes
     if (product.variants && product.variants.length > 0) {
       setProductForVariantSelection(product);
       setVariantSelectorVisible(true);
     } else {
-      // For simple products, pass the product itself (no specific variant)
       onAddToCart(product, null);
     }
   };
@@ -54,10 +54,8 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
   );
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Typography variant="h5" sx={{ p: 2, textAlign: 'center' }}>
-        记账
-      </Typography>
+    <>
+      <PageHeader title="记账" />
 
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', mb: 1 }}>
         <Box>
@@ -83,29 +81,46 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {cart.length > 0 ? (
           <List>
-            {cart.map(item => (
-              <ListItem
-                key={item.cartItemId}
-                secondaryAction={
-                  <CustomStepper
-                    value={item.quantity}
-                    onChange={onQuantityChange}
-                    cartItemId={item.cartItemId}
-                  />
+            {cart.map(item => {
+              const product = products.find(p => p.id === item.productId);
+              let currentStock = 0;
+              if (product) {
+                if (item.variantName) {
+                  const variant = product.variants.find(v => v.name === item.variantName);
+                  currentStock = variant ? variant.stock : 0;
+                } else {
+                  currentStock = product.stock;
                 }
-              >
-                <IconButton onClick={() => onGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
-                  <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
-                </IconButton>
-                <ListItemText
-                  primary={item.name}
-                  secondary={item.variantName || null} // Display variant name if it exists
-                />
-              </ListItem>
-            ))}
+              }
+
+              const isOverStock = item.quantity > currentStock;
+
+              return (
+                <ListItem
+                  key={item.cartItemId}
+                  secondaryAction={
+                    <CustomStepper
+                      value={item.quantity}
+                      onChange={onQuantityChange}
+                      cartItemId={item.cartItemId}
+                    />
+                  }
+                >
+                  <IconButton onClick={() => onGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
+                    <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
+                  </IconButton>
+                  <ListItemText
+                    primary={item.name}
+                    secondary={item.variantName || null}
+                    primaryTypographyProps={{ color: isOverStock ? 'error' : 'inherit' }}
+                    secondaryTypographyProps={{ color: isOverStock ? 'error' : 'text.secondary' }}
+                  />
+                </ListItem>
+              );
+            })}
           </List>
         ) : (
-          <Box sx={{ textAlign: 'center', mt: 8 }}>
+          <Box sx={{ textAlign: 'center', mt: 8, p: 2 }}>
             <Typography variant="subtitle1">购物车是空的</Typography>
             <Typography variant="body2" color="text.secondary">
               点击“添加商品”按钮，开始第一笔交易吧！
@@ -146,7 +161,7 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
         channels={paymentChannels}
         onSelectChannel={onCheckout}
       />
-    </Box>
+    </>
   );
 };
 

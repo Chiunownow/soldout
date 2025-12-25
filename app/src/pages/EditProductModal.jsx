@@ -5,7 +5,6 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { db } from '../db';
 import { useNotification } from '../NotificationContext';
 
-// Helper function to generate cartesian product of attributes
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
 
 const EditProductModal = ({ open, onClose, product }) => {
@@ -14,7 +13,7 @@ const EditProductModal = ({ open, onClose, product }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [stock, setStock] = useState(''); // Reintroduced for simple products
+  const [stock, setStock] = useState('');
   const [attributes, setAttributes] = useState([]);
   const [variants, setVariants] = useState([]);
   const [showAttributes, setShowAttributes] = useState(false);
@@ -36,17 +35,17 @@ const EditProductModal = ({ open, onClose, product }) => {
       const productAttributes = product.attributes || [];
       setAttributes(productAttributes);
       
-      const productVariants = product.variants || [];
+      // Keep stock values as strings for the input fields
+      const productVariants = (product.variants || []).map(v => ({ ...v, stock: String(v.stock) }));
       setVariants(productVariants);
 
       const hasAttributes = productAttributes.length > 0;
       setShowAttributes(hasAttributes);
-      // If there are attributes, we want to show the variant section if there are actual variants
-      // If no attributes, then the simple stock field should be visible, and populate it from product.stock
+      
       if (!hasAttributes) {
           setStock(product.stock ? String(product.stock) : '');
       } else {
-          setStock(''); // Clear simple stock if attributes are present
+          setStock('');
       }
       setShowVariants(hasAttributes && productVariants.length > 0);
     }
@@ -63,7 +62,7 @@ const EditProductModal = ({ open, onClose, product }) => {
         }
     }
     setAttributes(newAttributes);
-    setShowVariants(false); // Force re-generation of variants if attributes change
+    setShowVariants(false);
   };
 
   const addAttributeField = () => {
@@ -90,12 +89,11 @@ const EditProductModal = ({ open, onClose, product }) => {
     const newVariants = combinations.map(combo => {
         const comboArray = Array.isArray(combo) ? combo : [combo];
         const variantName = comboArray.map(c => `${c.key}:${c.value}`).join(' / ');
-        // Try to find existing variant to preserve stock
         const existingVariant = variants.find(v => v.name === variantName);
         return {
             name: variantName,
             attributes: comboArray,
-            stock: existingVariant ? existingVariant.stock : 0,
+            stock: existingVariant ? existingVariant.stock : '', // Preserve existing stock string
         };
     });
 
@@ -104,17 +102,19 @@ const EditProductModal = ({ open, onClose, product }) => {
   };
 
   const handleVariantStockChange = (index, value) => {
-    const newVariants = [...variants];
-    newVariants[index].stock = parseInt(value, 10) || 0;
-    setVariants(newVariants);
+    if (/^\d*$/.test(value)) {
+        const newVariants = [...variants];
+        newVariants[index].stock = value;
+        setVariants(newVariants);
+    }
   };
   
   const totalStock = useMemo(() => {
     if (!showAttributes) {
-        return parseInt(stock, 10) || 0; // If no attributes, use the simple stock field
+        return parseInt(stock, 10) || 0;
     }
     if (showVariants) {
-      return variants.reduce((acc, variant) => acc + variant.stock, 0);
+      return variants.reduce((acc, variant) => acc + (parseInt(variant.stock, 10) || 0), 0);
     }
     return 0;
   }, [variants, showVariants, showAttributes, stock]);
@@ -125,30 +125,27 @@ const EditProductModal = ({ open, onClose, product }) => {
       return;
     }
 
-    if (!showAttributes) { // For simple products
-        if (!stock || parseInt(stock, 10) <= 0) {
-            showNotification('请填写产品库存', 'warning');
-            return;
-        }
-    } else { // For products with attributes
-        if (!showVariants) {
-            showNotification('请生成子属性规格并填写库存', 'warning');
-            return;
-        }
-        if (totalStock <= 0) {
-            showNotification('请至少为一种规格填写大于0的库存', 'warning');
-            return;
-        }
+    const finalStock = parseInt(stock, 10) || 0;
+    if (showAttributes && !showVariants) {
+      showNotification('请生成子属性规格', 'warning');
+      return;
     }
 
     try {
+      const trimmedName = name.trim();
+      const existingProduct = await db.products.where('name').equalsIgnoreCase(trimmedName).first();
+      if (existingProduct && existingProduct.id !== id) {
+        showNotification('已存在同名商品', 'error');
+        return;
+      }
+
       const productData = {
-        name,
+        name: trimmedName,
         price: parseFloat(price),
         description,
         attributes: showAttributes ? attributes.filter(attr => attr.key && attr.value) : [],
-        variants: showAttributes ? variants : [], // Only save variants if attributes are shown
-        stock: totalStock,
+        variants: showAttributes ? variants.map(v => ({ ...v, stock: parseInt(v.stock, 10) || 0 })) : [],
+        stock: showAttributes ? totalStock : finalStock,
       };
       
       await db.products.update(id, productData);
@@ -168,9 +165,19 @@ const EditProductModal = ({ open, onClose, product }) => {
           <TextField label="产品名称" value={name} onChange={e => setName(e.target.value)} fullWidth />
           <TextField label="销售价格" type="number" value={price} onChange={e => setPrice(e.target.value)} fullWidth />
           
-          {!showAttributes && ( // Show simple stock field if no attributes
-              <TextField label="初始库存" placeholder="例如：100" type="number" value={stock} onChange={e => setStock(e.target.value)} fullWidth />
-          )}
+          <TextField 
+            label="库存"
+            type="number"
+            value={stock}
+            onChange={e => {
+                if (/^\d*$/.test(e.target.value)) {
+                    setStock(e.target.value);
+                }
+            }}
+            fullWidth
+            disabled={showAttributes}
+            helperText={showAttributes ? "勾选子属性后，请在下方设置各规格的库存" : "设置商品总库存。添加子属性后，此项将无效。"}
+          />
 
           <TextField label="文字描述" multiline rows={3} value={description} onChange={e => setDescription(e.target.value)} fullWidth />
           
@@ -181,12 +188,12 @@ const EditProductModal = ({ open, onClose, product }) => {
                     setShowVariants(false);
                     setAttributes([]);
                     setVariants([]);
-                    setStock(product.stock ? String(product.stock) : ''); // Restore simple stock from product
+                    setStock(product.stock ? String(product.stock) : '');
                 } else {
-                    setStock(''); // Clear simple stock if attributes are enabled
+                    setStock('');
                 }
             }} />}
-            label="添加子属性 (多规格)"
+            label="编辑子属性 (多规格)"
           />
 
           {showAttributes && (
@@ -219,7 +226,7 @@ const EditProductModal = ({ open, onClose, product }) => {
             </Box>
           )}
 
-          {showAttributes && showVariants && ( // Only show variants if attributes are also shown
+          {showAttributes && showVariants && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, border: '1px solid #ccc', p: 2, borderRadius: 1, mt: 2 }}>
               <Typography variant="subtitle2">库存设置 (总库存: {totalStock})</Typography>
               {variants.map((variant, index) => (

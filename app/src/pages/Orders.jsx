@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { List, ListItem, ListItemButton, ListItemText, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from '@mui/material';
+import PageHeader from '../components/PageHeader';
+import { useNotification } from '../NotificationContext';
 
 const Orders = () => {
-  const orders = useLiveQuery(
-    () => db.orders.orderBy('createdAt').reverse().toArray(),
-    []
-  );
+  const { showNotification } = useNotification();
+  const orders = useLiveQuery(() => db.orders.orderBy('createdAt').reverse().toArray(), []);
+  const paymentChannels = useLiveQuery(() => db.paymentChannels.toArray(), []); // Fetch payment channels
+
+  const channelMap = paymentChannels ? new Map(paymentChannels.map(c => [c.id, c.name])) : new Map();
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
@@ -30,15 +33,39 @@ const Orders = () => {
       await db.orders.update(selectedOrder.id, { status: 'cancelled' });
       await db.transaction('rw', db.products, async () => {
         for (const item of selectedOrder.items) {
-          await db.products.where('id').equals(item.productId).modify(p => {
-            p.stock += item.quantity;
-          });
+          const product = await db.products.get(item.productId);
+          if (product) {
+            let newStock = product.stock;
+            let newVariants = product.variants;
+
+            if (item.variantName && product.variants) {
+              let variantFound = false;
+              newVariants = product.variants.map(v => {
+                if (v.name === item.variantName) {
+                  variantFound = true;
+                  return { ...v, stock: v.stock + item.quantity };
+                }
+                return v;
+              });
+
+              if (variantFound) {
+                 newStock = newVariants.reduce((acc, v) => acc + v.stock, 0);
+                 await db.products.update(item.productId, {
+                   variants: newVariants,
+                   stock: newStock,
+                 });
+              }
+            } else {
+              newStock = product.stock + item.quantity;
+              await db.products.update(item.productId, { stock: newStock });
+            }
+          }
         }
       });
-      window.alert('订单已取消');
+      showNotification('订单已取消', 'success');
     } catch (error) {
       console.error('Failed to cancel order:', error);
-      window.alert('操作失败，请重试');
+      showNotification('操作失败，请重试', 'error');
     } finally {
       setCancelDialogVisible(false);
       setSelectedOrder(null);
@@ -57,24 +84,30 @@ const Orders = () => {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" sx={{ p: 2, textAlign: 'center' }}>
-        订单历史
-      </Typography>
+    <>
+      <PageHeader title="订单历史" />
       {orders && orders.length > 0 ? (
         <List>
           {orders.map(order => (
             <ListItemButton key={order.id} onClick={() => handleOrderClick(order)}>
               <ListItemText
                 primary={new Date(order.createdAt).toLocaleString()}
-                secondary={renderOrderStatus(order.status)}
+                secondary={
+                  <Box component="div">
+                    {renderOrderStatus(order.status)}
+                    <Typography variant="body2" color="text.secondary" sx={{ display: 'block' }}>
+                      渠道: {channelMap.get(order.paymentChannelId) || '未知'}
+                    </Typography>
+                  </Box>
+                }
+                secondaryTypographyProps={{ component: 'div' }}
               />
               <Typography variant="body1">¥ {order.totalAmount.toFixed(2)}</Typography>
             </ListItemButton>
           ))}
         </List>
       ) : (
-        <Box sx={{ textAlign: 'center', mt: 8 }}>
+        <Box sx={{ textAlign: 'center', mt: 8, p: 2 }}>
             <Typography variant="subtitle1">还没有订单记录</Typography>
         </Box>
       )}
@@ -88,11 +121,12 @@ const Orders = () => {
               <Typography gutterBottom><strong>时间:</strong> {new Date(selectedOrder.createdAt).toLocaleString()}</Typography>
               <Typography gutterBottom><strong>总金额:</strong> ¥ {selectedOrder.totalAmount.toFixed(2)}</Typography>
               <Typography component="div" gutterBottom><strong>状态:</strong> {renderOrderStatus(selectedOrder.status)}</Typography>
+              <Typography gutterBottom><strong>支付渠道:</strong> {channelMap.get(selectedOrder.paymentChannelId) || '未知'}</Typography>
               <List dense subheader={<Typography variant="subtitle2" sx={{ mt: 2 }}>商品列表</Typography>}>
                 {selectedOrder.items.map((item, index) => (
                   <ListItem key={index}>
-                    <ListItemText primary={item.name} />
-                    <Typography variant="body2">
+                    <ListItemText primary={`${item.name} ${item.variantName || ''}`} />
+                    <Typography variant="body2" component="div">
                       {item.isGift && <Chip label="赠品" size="small" sx={{ mr: 1 }} />}
                       x{item.quantity}
                     </Typography>
@@ -123,7 +157,7 @@ const Orders = () => {
             <Button onClick={executeCancelOrder} color="error" variant="contained">确定取消</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </>
   );
 };
 

@@ -20,7 +20,6 @@ const VariantSelector = ({ open, product, onSelect, onClose }) => {
             <ListItem disableGutters key={index}>
               <ListItemButton
                 onClick={() => handleVariantSelect(variant)}
-                disabled={variant.stock <= 0}
               >
                 <ListItemText
                   primary={variant.name}

@@ -8,6 +8,10 @@ vi.mock('./db', () => ({
   db: {
     products: {
       toArray: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0), // Mock count method
+    },
+    orders: { // Mock orders table as well
+      count: vi.fn().mockResolvedValue(0), // Mock count method
     },
     cart: {
       toArray: vi.fn().mockResolvedValue([]),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Box, Paper, BottomNavigation, BottomNavigationAction, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Box, Paper, BottomNavigation, BottomNavigationAction, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, List, ListItem, ListItemText, Typography } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AppsIcon from '@mui/icons-material/Apps';
@@ -10,6 +10,7 @@ import Inventory from './pages/Inventory'
 import Orders from './pages/Orders'
 import Stats from './pages/Stats'
 import Settings from './pages/Settings'
+import WelcomeDialog from './components/WelcomeDialog'; // Import WelcomeDialog
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { useNotification } from './NotificationContext';
@@ -21,6 +22,24 @@ const App = () => {
   const products = useLiveQuery(() => db.products.toArray(), []);
   
   const [clearCartDialogVisible, setClearCartDialogVisible] = useState(false);
+  const [stockWarningDialogOpen, setStockWarningDialogOpen] = useState(false);
+  const [outOfStockItems, setOutOfStockItems] = useState([]);
+  const [checkoutArgs, setCheckoutArgs] = useState(null);
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const checkFirstVisit = async () => {
+      const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+      if (!hasSeenWelcome) {
+        const productCount = await db.products.count();
+        const orderCount = await db.orders.count();
+        if (productCount === 0 && orderCount === 0) {
+          setWelcomeDialogOpen(true);
+        }
+      }
+    };
+    checkFirstVisit();
+  }, []);
 
   useEffect(() => {
     const loadCart = async () => {
@@ -33,6 +52,11 @@ const App = () => {
     };
     loadCart();
   }, []);
+
+  const handleConfirmWelcome = () => {
+    localStorage.setItem('hasSeenWelcome', 'true');
+    setWelcomeDialogOpen(false);
+  };
 
   const saveCartToDb = useCallback(async (newCart) => {
     try {
@@ -48,28 +72,24 @@ const App = () => {
   }, []);
 
   const handleAddToCart = useCallback((product, variant = null) => {
-    // If a variant is selected, the cart item ID is based on the variant's name
-    // Otherwise, for simple products, it's based on the product ID
     const cartItemId = variant ? `${product.id}-${variant.name}` : `${product.id}`;
 
     let newCart;
     const existingItemIndex = cart.findIndex(item => item.cartItemId === cartItemId);
 
     if (existingItemIndex !== -1) {
-      // Increase quantity if item already in cart
       newCart = cart.map((item, index) =>
         index === existingItemIndex ? { ...item, quantity: item.quantity + 1 } : item
       );
     } else {
-      // Add new item to cart
       newCart = [...cart, {
         cartItemId,
         productId: product.id,
         name: product.name,
-        price: product.price, // Assuming price is the same for all variants
+        price: product.price,
         quantity: 1,
         isGift: false,
-        variantName: variant ? variant.name : null, // Store variant name
+        variantName: variant ? variant.name : null,
       }];
     }
     setCart(newCart);
@@ -79,7 +99,6 @@ const App = () => {
   const handleQuantityChange = useCallback((cartItemId, quantity) => {
     let newCart;
     if (quantity <= 0) {
-      // Remove item if quantity is zero or less
       newCart = cart.filter(item => item.cartItemId !== cartItemId);
     } else {
       newCart = cart.map(item =>
@@ -110,23 +129,21 @@ const App = () => {
     setClearCartDialogVisible(false);
   };
 
-  const handleCheckout = async (paymentChannelId) => {
+  const proceedWithCheckout = async (paymentChannelId) => {
     if (cart.length === 0) return;
 
     const totalAmount = cart
       .reduce((sum, item) => sum + (item.isGift ? 0 : item.price * item.quantity), 0);
 
     try {
-      // Save the order
       await db.orders.add({
-        items: cart.map(({ cartItemId, ...rest }) => rest), // Remove cartItemId before saving to order
+        items: cart.map(({ cartItemId, ...rest }) => rest),
         paymentChannelId,
         totalAmount,
         status: 'completed',
         createdAt: new Date(),
       });
 
-      // Update product stock in a single transaction
       await db.transaction('rw', db.products, async () => {
         for (const item of cart) {
           const product = await db.products.get(item.productId);
@@ -135,7 +152,6 @@ const App = () => {
             let newVariants = product.variants;
 
             if (item.variantName && product.variants) {
-              // Product with variants
               let variantFound = false;
               newVariants = product.variants.map(v => {
                 if (v.name === item.variantName) {
@@ -153,7 +169,6 @@ const App = () => {
                  });
               }
             } else {
-              // Simple product
               newStock = product.stock - item.quantity;
               await db.products.update(item.productId, { stock: newStock });
             }
@@ -161,7 +176,6 @@ const App = () => {
         }
       });
 
-      // Clear the cart
       const newCart = [];
       setCart(newCart);
       saveCartToDb(newCart);
@@ -170,6 +184,41 @@ const App = () => {
     } catch (error) {
       console.error('Failed to checkout:', error);
       showNotification(`结算失败: ${error.message}`, 'error');
+    }
+  };
+
+  const handleCheckout = async (paymentChannelId) => {
+    if (cart.length === 0) return;
+
+    const itemsWithStockIssues = [];
+    for (const item of cart) {
+      const product = await db.products.get(item.productId);
+      if (!product) continue;
+
+      let availableStock = 0;
+      if (item.variantName) {
+        const variant = product.variants.find(v => v.name === item.variantName);
+        availableStock = variant ? variant.stock : 0;
+      } else {
+        availableStock = product.stock;
+      }
+
+      if (item.quantity > availableStock) {
+        itemsWithStockIssues.push({
+          name: item.name,
+          variantName: item.variantName,
+          quantity: item.quantity,
+          availableStock: availableStock,
+        });
+      }
+    }
+
+    if (itemsWithStockIssues.length > 0) {
+      setOutOfStockItems(itemsWithStockIssues);
+      setCheckoutArgs(paymentChannelId);
+      setStockWarningDialogOpen(true);
+    } else {
+      await proceedWithCheckout(paymentChannelId);
     }
   };
 
@@ -207,7 +256,7 @@ const App = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {renderContent()}
       </Box>
@@ -220,10 +269,18 @@ const App = () => {
           }}
         >
           {tabs.map(item => (
-            <BottomNavigationAction key={item.key} label={item.title} value={item.key} icon={item.icon} />
+            <BottomNavigationAction 
+              key={item.key} 
+              label={item.title} 
+              value={item.key} 
+              icon={item.icon} 
+              sx={{ minWidth: 'auto', padding: '6px 0' }}
+            />
           ))}
         </BottomNavigation>
       </Paper>
+
+      <WelcomeDialog open={welcomeDialogOpen} onConfirm={handleConfirmWelcome} />
 
       <Dialog
         open={clearCartDialogVisible}
@@ -238,6 +295,40 @@ const App = () => {
         <DialogActions>
           <Button onClick={() => setClearCartDialogVisible(false)}>取消</Button>
           <Button onClick={confirmClearCart} color="error">确定</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={stockWarningDialogOpen}
+        onClose={() => setStockWarningDialogOpen(false)}
+      >
+        <DialogTitle>库存不足警告</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            以下商品库存不足，继续结算将导致库存变为负数。
+          </DialogContentText>
+          <List dense>
+            {outOfStockItems.map((item, index) => (
+              <ListItem key={index}>
+                <ListItemText
+                  primary={`${item.name} ${item.variantName || ''}`}
+                  secondary={`需求: ${item.quantity}, 可用: ${item.availableStock}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+          <DialogContentText>
+            是否继续结算？
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStockWarningDialogOpen(false)}>取消</Button>
+          <Button onClick={async () => {
+            setStockWarningDialogOpen(false);
+            await proceedWithCheckout(checkoutArgs);
+          }} color="warning">
+            继续结算
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
