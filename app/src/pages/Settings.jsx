@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Button, SwipeAction, Dialog, Toast, Tag, Card } from 'antd-mobile';
+import { List, Button, SwipeAction, Dialog, Tag, Card } from 'antd-mobile';
 
 const Settings = () => {
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
@@ -16,10 +16,10 @@ const Settings = () => {
       const name = result.text.trim();
       try {
         await db.paymentChannels.add({ name, isSystemChannel: false });
-        Toast.show({ icon: 'success', content: '添加成功' });
+        window.alert('添加成功');
       } catch (error) {
         console.error('Failed to add channel:', error);
-        Toast.show({ icon: 'fail', content: '添加失败' });
+        window.alert('添加失败');
       }
     }
   };
@@ -27,19 +27,19 @@ const Settings = () => {
   const handleDeleteChannel = async (id) => {
     try {
       await db.paymentChannels.delete(id);
-      Toast.show({ icon: 'success', content: '删除成功' });
+      window.alert('删除成功');
     } catch (error) {
       console.error('Failed to delete channel:', error);
-      Toast.show({ icon: 'fail', content: '删除失败' });
+      window.alert('删除失败');
     }
   };
 
   const handleExport = async () => {
-    Toast.show({ icon: 'loading', content: '正在导出...', duration: 0 });
+    window.alert('正在导出...');
     try {
       const allOrders = await db.orders.orderBy('createdAt').toArray();
       if (allOrders.length === 0) {
-        Toast.show({ content: '没有订单可导出' });
+        window.alert('没有订单可导出');
         return;
       }
 
@@ -70,7 +70,6 @@ const Settings = () => {
         });
       });
 
-      Toast.clear();
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -80,9 +79,8 @@ const Settings = () => {
       document.body.removeChild(link);
 
     } catch (error) {
-      Toast.clear();
       console.error('Failed to export data:', error);
-      Toast.show({ icon: 'fail', content: '导出失败' });
+      window.alert('导出失败');
     }
   };
 

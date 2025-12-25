@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { TabBar, Dialog, Toast } from 'antd-mobile'
+import { TabBar, Dialog } from 'antd-mobile'
 import {
   AppOutline,
   UnorderedListOutline,
@@ -134,14 +134,11 @@ const App = () => {
       const newCart = [];
       setCart(newCart);
       saveCartToDb(newCart);
-      Toast.show({ icon: 'success', content: '结算成功' });
+      window.alert('结算成功');
 
     } catch (error) {
       console.error('Failed to checkout:', error);
-      Toast.show({
-        icon: 'fail',
-        content: '结算失败，请重试',
-      });
+      window.alert('结算失败，请重试');
     }
   };
 

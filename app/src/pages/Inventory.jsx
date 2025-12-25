@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Empty, FloatingBubble, SwipeAction, Toast } from 'antd-mobile';
+import { List, Empty, FloatingBubble, SwipeAction } from 'antd-mobile';
 import { AddOutline } from 'antd-mobile-icons';
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
@@ -25,16 +25,10 @@ const Inventory = () => {
   const handleDelete = async (id) => {
     try {
       await db.products.delete(id);
-      Toast.show({
-        content: '已删除',
-        position: 'bottom',
-      });
+      window.alert('已删除');
     } catch (error) {
       console.error('Failed to delete product:', error);
-      Toast.show({
-        content: '删除失败',
-        position: 'bottom',
-      });
+      window.alert('删除失败');
     }
   };
 

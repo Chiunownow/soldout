@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Empty, Modal, Tag, Button, Dialog, Toast } from 'antd-mobile';
+import { List, Empty, Modal, Tag, Dialog } from 'antd-mobile';
 
 const Orders = () => {
   const orders = useLiveQuery(
@@ -10,43 +10,45 @@ const Orders = () => {
   );
 
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [cancelDialogVisible, setCancelDialogVisible] = useState(false);
 
   const handleOrderClick = (order) => {
     setSelectedOrder(order);
-    setModalVisible(true);
+    setDetailsModalVisible(true);
+  };
+
+  const openCancelConfirm = () => {
+    // We close the details modal first to show the confirmation dialog underneath
+    setDetailsModalVisible(false);
+    setCancelDialogVisible(true);
   };
   
-  const handleCancelOrder = async (order) => {
-    if (!order || order.status !== 'completed') return;
+  const executeCancelOrder = async () => {
+    if (!selectedOrder || selectedOrder.status !== 'completed') return;
 
-    const result = await Dialog.confirm({
-      content: '确定要取消此订单吗？库存将会被回退。',
-      confirmText: '确定取消',
-    });
+    try {
+      // 1. Update order status
+      await db.orders.update(selectedOrder.id, { status: 'cancelled' });
 
-    if (result) {
-      try {
-        // 1. Update order status
-        await db.orders.update(order.id, { status: 'cancelled' });
+      // 2. Roll back stock
+      await db.transaction('rw', db.products, async () => {
+        for (const item of selectedOrder.items) {
+          await db.products.where('id').equals(item.productId).modify(p => {
+            p.stock += item.quantity;
+          });
+        }
+      });
+      
+      window.alert('订单已取消');
 
-        // 2. Roll back stock
-        await db.transaction('rw', db.products, async () => {
-          for (const item of order.items) {
-            await db.products.where('id').equals(item.productId).modify(p => {
-              p.stock += item.quantity;
-            });
-          }
-        });
-        
-        // 3. Close modal and show success
-        setModalVisible(false);
-        Toast.show({ icon: 'success', content: '订单已取消' });
-
-      } catch (error) {
-        console.error('Failed to cancel order:', error);
-        Toast.show({ icon: 'fail', content: '操作失败，请重试' });
-      }
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      window.alert('操作失败，请重试');
+    } finally {
+      // Clean up state
+      setCancelDialogVisible(false);
+      setSelectedOrder(null);
     }
   };
 
@@ -62,13 +64,13 @@ const Orders = () => {
   }
 
   const modalActions = (order) => {
-    const actions = [{ key: 'close', text: '关闭' }];
+    const actions = [{ key: 'close', text: '关闭', onClick: () => setDetailsModalVisible(false) }];
     if (order && order.status === 'completed') {
       actions.unshift({
         key: 'cancel',
         text: '取消订单',
         danger: true,
-        onClick: () => handleCancelOrder(order),
+        onClick: openCancelConfirm,
       });
     }
     return actions;
@@ -94,8 +96,8 @@ const Orders = () => {
       )}
 
       <Modal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
+        visible={detailsModalVisible}
+        onClose={() => setDetailsModalVisible(false)}
         title="订单详情"
         content={
           selectedOrder && (
@@ -115,6 +117,25 @@ const Orders = () => {
           )
         }
         actions={modalActions(selectedOrder)}
+      />
+
+      <Dialog
+        visible={cancelDialogVisible}
+        onClose={() => setCancelDialogVisible(false)}
+        content={'确定要取消此订单吗？库存将会被回退。'}
+        actions={[
+          {
+            key: 'cancel',
+            text: '点错了',
+          },
+          {
+            key: 'confirm',
+            text: '确定取消',
+            bold: true,
+            danger: true,
+            onClick: executeCancelOrder,
+          },
+        ]}
       />
     </div>
   );

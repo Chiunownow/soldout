@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Button, Toast } from 'antd-mobile';
+import { Modal, Input, Button } from 'antd-mobile';
 import { AddOutline, MinusCircleOutline } from 'antd-mobile-icons';
 import { db } from '../db';
 
@@ -22,7 +22,7 @@ const AddProductModal = ({ visible, onClose }) => {
 
   const handleSubmit = async () => {
     if (!name || !price || !stock) {
-      Toast.show({ content: '请填写产品名称、价格和库存' });
+      window.alert('请填写产品名称、价格和库存');
       return;
     }
     try {
@@ -35,11 +35,11 @@ const AddProductModal = ({ visible, onClose }) => {
         attributes: filteredAttributes,
         createdAt: new Date(),
       });
-      Toast.show({ icon: 'success', content: '产品添加成功' });
+      window.alert('产品添加成功');
       onClose();
     } catch (error) {
       console.error('Failed to add product:', error);
-      Toast.show({ icon: 'fail', content: '产品添加失败' });
+      window.alert('产品添加失败');
     }
   };
 
