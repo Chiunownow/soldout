@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Chip, DialogContentText } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import GitHubIcon from '@mui/icons-material/GitHub'; // Import GitHubIcon
 import { useNotification } from '../NotificationContext';
 import useLongPress from '../useLongPress';
 import PageHeader from '../components/PageHeader';
@@ -175,6 +176,14 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
           <Typography variant="caption">
             Version: {import.meta.env.VITE_APP_VERSION || 'dev'}
           </Typography>
+          <IconButton
+            aria-label="GitHub repository"
+            onClick={() => window.open('https://github.com/Chiunownow/soldout', '_blank')}
+            color="inherit"
+            sx={{ mt: 1 }}
+          >
+            <GitHubIcon />
+          </IconButton>
         </Box>
       </Box>
       
