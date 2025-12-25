@@ -48,3 +48,17 @@ This is a lightweight Progressive Web App (PWA) designed for small-scale sales s
 4.  在浏览器中打开 `http://localhost:5173`（或 Vite 提示的其他端口）。
     
     Open `http://localhost:5173` (or the port specified by Vite) in your browser.
+
+---
+
+## 部署到 Cloudflare Pages / Deploy to Cloudflare Pages
+
+通过点击下面的按钮，您可以将此应用一键部署到 Cloudflare Pages。
+
+By clicking the button below, you can deploy this application to Cloudflare Pages with a single click.
+
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=YOUR_REPOSITORY_URL)
+
+**请注意：** 您需要替换 `YOUR_REPOSITORY_URL` 为您的实际 Git 仓库地址。
+
+**Please Note:** You need to replace `YOUR_REPOSITORY_URL` with your actual Git repository URL.
