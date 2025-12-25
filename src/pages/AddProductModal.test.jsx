@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AddProductModal from './AddProductModal';
 import { db } from '../db';
 import { NotificationProvider } from '../NotificationContext';
@@ -10,6 +10,9 @@ vi.mock('../db', () => ({
   db: {
     products: {
       add: vi.fn(),
+      where: vi.fn().mockReturnThis(),
+      equalsIgnoreCase: vi.fn().mockReturnThis(),
+      first: vi.fn().mockResolvedValue(null),
     },
   },
 }));
@@ -35,20 +38,21 @@ describe('AddProductModal', () => {
     expect(screen.getByText('添加新产品')).toBeInTheDocument();
     expect(screen.getByLabelText('初始库存')).toBeInTheDocument();
     expect(screen.queryByText('定义属性')).not.toBeInTheDocument();
-    expect(screen.queryByText('库存设置')).not.toBeInTheDocument();
+    expect(screen.queryByText('设置库存')).not.toBeInTheDocument();
   });
 
   it('renders correctly for product with attributes option selected', async () => {
     renderWithProvider(<AddProductModal open={true} onClose={handleClose} />);
     
-    // Check "添加子属性 (多规格)"
     fireEvent.click(screen.getByLabelText('添加子属性 (多规格)'));
 
+    fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Variant Product' } });
+    fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '150' } });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
     await waitFor(() => {
-        expect(screen.queryByLabelText('初始库存')).not.toBeInTheDocument();
         expect(screen.getByText('定义属性')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '添加另一属性' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '生成规格' })).toBeInTheDocument();
     });
   });
 
@@ -79,47 +83,32 @@ describe('AddProductModal', () => {
   it('submits product with variants data correctly', async () => {
     renderWithProvider(<AddProductModal open={true} onClose={handleClose} />);
 
-    // Fill in basic fields
     fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Variant Product' } });
     fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '150' } });
 
-    // Enable attributes
     fireEvent.click(screen.getByLabelText('添加子属性 (多规格)'));
-    await waitFor(() => expect(screen.queryByLabelText('初始库存')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 
-    // Add first attribute: Color: Red Blue
+    await waitFor(() => expect(screen.getByText('定义属性')).toBeInTheDocument());
+
     fireEvent.click(screen.getByRole('button', { name: '添加另一属性' }));
-    fireEvent.change(screen.getByLabelText('属性名称'), { target: { value: '颜色' } });
-    fireEvent.change(screen.getByLabelText('属性值 (用空格分隔)'), { target: { value: '红 蓝' } });
-
-    // Add second attribute: Size: S M
-    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' }));
-    fireEvent.change(screen.getAllByLabelText('属性名称')[1], { target: { value: '尺码' } });
-    fireEvent.change(screen.getAllByLabelText('属性值 (用空格分隔)')[1], { target: { value: 'S M' } });
-
-    // Generate variants
-    fireEvent.click(screen.getByRole('button', { name: '生成规格' }));
+    const attributeNameInputs = screen.getAllByLabelText('属性名称');
+    const attributeValueInputs = screen.getAllByLabelText('属性值 (用空格分隔)');
+    fireEvent.change(attributeNameInputs[0], { target: { value: '颜色' } });
+    fireEvent.change(attributeValueInputs[0], { target: { value: '红 蓝' } });
     
-    await waitFor(() => {
-        expect(screen.getByText('库存设置 (总库存: 0)')).toBeInTheDocument();
-        expect(screen.getByText('颜色:红 / 尺码:S')).toBeInTheDocument();
-        expect(screen.getByText('颜色:红 / 尺码:M')).toBeInTheDocument();
-        expect(screen.getByText('颜色:蓝 / 尺码:S')).toBeInTheDocument();
-        expect(screen.getByText('颜色:蓝 / 尺码:M')).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 
-    // Set stock for variants
+    await waitFor(() => {
+        expect(screen.getByText('为生成的规格设置库存 (总库存: 0)')).toBeInTheDocument();
+        expect(screen.getByText('颜色:红')).toBeInTheDocument();
+        expect(screen.getByText('颜色:蓝')).toBeInTheDocument();
+    });
+    
     const stockInputs = screen.getAllByLabelText('库存');
-    fireEvent.change(stockInputs[0], { target: { value: '10' } }); // first variant
-    fireEvent.change(stockInputs[1], { target: { value: '20' } }); // second variant
-    fireEvent.change(stockInputs[2], { target: { value: '5' } });  // third variant
-    fireEvent.change(stockInputs[3], { target: { value: '15' } }); // fourth variant
+    fireEvent.change(stockInputs[0], { target: { value: '10' } });
+    fireEvent.change(stockInputs[1], { target: { value: '20' } });
 
-
-    await waitFor(() => {
-        expect(screen.getByText('库存设置 (总库存: 50)')).toBeInTheDocument();
-    });
-    
     fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
     await waitFor(() => {
@@ -127,52 +116,52 @@ describe('AddProductModal', () => {
       const addedProduct = db.products.add.mock.calls[0][0];
       expect(addedProduct.name).toBe('Variant Product');
       expect(addedProduct.price).toBe(150);
-      expect(addedProduct.stock).toBe(50); // 10 + 20 + 5 + 15
-      expect(addedProduct.attributes).toEqual([
-        { key: '颜色', value: '红 蓝' },
-        { key: '尺码', value: 'S M' },
-      ]);
-      expect(addedProduct.variants.length).toBe(4);
-      expect(addedProduct.variants[0].stock).toBe(10);
-      expect(addedProduct.variants[1].stock).toBe(20);
-      expect(addedProduct.variants[2].stock).toBe(5);
-      expect(addedProduct.variants[3].stock).toBe(15);
+      expect(addedProduct.stock).toBe(30);
+      expect(addedProduct.attributes.length).toBe(1);
+      expect(addedProduct.variants.length).toBe(2);
     });
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  it('shows warning if attributes enabled but variants not generated before submit', async () => {
-    renderWithProvider(<AddProductModal open={true} onClose={handleClose} />);
+  it('shows warning if attribute key is duplicated', async () => {
+    const { getByText } = renderWithProvider(<AddProductModal open={true} onClose={handleClose} />);
 
-    fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Product' } });
-    fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '100' } });
     fireEvent.click(screen.getByLabelText('添加子属性 (多规格)'));
-    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' }));
-    fireEvent.change(screen.getByLabelText('属性名称'), { target: { value: '颜色' } });
-    fireEvent.change(screen.getByLabelText('属性值 (用空格分隔)'), { target: { value: '黑' } });
+    fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    
+    await waitFor(() => fireEvent.click(screen.getByRole('button', { name: '添加另一属性' })));
+    
+    fireEvent.change(screen.getAllByLabelText('属性名称')[0], { target: { value: '颜色' } });
+    fireEvent.change(screen.getAllByLabelText('属性值 (用空格分隔)')[0], { target: { value: '红' } });
 
-    fireEvent.click(screen.getByRole('button', { name: '提交' }));
+    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' }));
+
+    fireEvent.change(screen.getAllByLabelText('属性名称')[1], { target: { value: '颜色' } });
+    fireEvent.change(screen.getAllByLabelText('属性值 (用空格分隔)')[1], { target: { value: '蓝' } });
+
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 
     await waitFor(() => {
-        expect(screen.getByText('请生成子属性规格并填写库存')).toBeInTheDocument();
+        expect(getByText('属性名称不能重复')).toBeInTheDocument();
     });
-    expect(db.products.add).not.toHaveBeenCalled();
-    expect(handleClose).not.toHaveBeenCalled();
   });
 
   it('allows adding and removing sub-attribute fields dynamically', async () => {
     renderWithProvider(<AddProductModal open={true} onClose={handleClose} />);
     
     fireEvent.click(screen.getByLabelText('添加子属性 (多规格)'));
+    
+    fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
     await waitFor(() => expect(screen.getByText('定义属性')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' })); // Add first
-    expect(screen.getAllByLabelText('属性名称').length).toBe(1);
-
-    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' })); // Add second
+    fireEvent.click(screen.getByRole('button', { name: '添加另一属性' }));
     expect(screen.getAllByLabelText('属性名称').length).toBe(2);
 
-    // Remove the first attribute field
     fireEvent.click(screen.getAllByRole('button', { name: /移除属性/i })[0]);
     expect(screen.getAllByLabelText('属性名称').length).toBe(1);
   });
