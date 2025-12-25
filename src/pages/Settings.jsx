@@ -156,6 +156,13 @@ const Settings = () => {
               </Typography>
           </CardContent>
         </Card>
+
+        <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
+          <Typography variant="h6">Sold Out (售罄)</Typography>
+          <Typography variant="caption">
+            Version: {import.meta.env.VITE_APP_VERSION || 'dev'}
+          </Typography>
+        </Box>
       </Box>
       
       {/* Add Channel Dialog */}
