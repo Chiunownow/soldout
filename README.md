@@ -1,8 +1,19 @@
-# PWA 销售记账与库存统计应用 / PWA Sales & Inventory Management App
+# 演出现场周边销售记账 PWA / Gig Merchandise Sales PWA
 
-这是一个轻量级的渐进式网络应用 (PWA)，旨在为小型销售场景提供简单的销售记账、库存跟踪和统计功能。它为移动设备优先设计，并支持完全离线运行。
+这是一个专为小型音乐演出现场设计的渐进式网络应用 (PWA)，用于销售乐队T恤、唱片、贴纸、海报等周边产品。它旨在简化记账、加速销售流程，并方便在演出结束后快速盘点库存。本应用为移动设备优先设计，并支持完全离线运行。
 
-This is a lightweight Progressive Web App (PWA) designed for small-scale sales scenarios, providing simple sales recording, inventory tracking, and analytics. It is mobile-first and fully functional offline.
+This is a Progressive Web App (PWA) specifically designed for managing merchandise sales at small music gigs, such as selling band T-shirts, records, stickers, and posters. It aims to simplify accounting, speed up the sales process, and make inventory reconciliation easy after the show. The app is mobile-first and fully functional offline.
+
+---
+
+## 场景 / Scenario
+
+在昏暗嘈杂的 Livehouse 或音乐节场地，乐队成员或工作人员需要一个快速、可靠的工具来：
+
+*   **快速结账：** 轻松选择商品、处理现金或赠品交易。
+*   **管理库存：** 实时跟踪不同尺寸、颜色的 T恤或多款设计的海报库存。
+*   **离线工作：** 不受现场网络信号不佳的影响，所有操作都能流畅进行。
+*   **轻松盘点：** 演出结束后，通过清晰的销售记录快速盘点剩余库存和核对销售额。
 
 ---
 
