@@ -8,7 +8,7 @@ const gitHash = execSync('git rev-parse --short HEAD').toString().trim()
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(`v${process.env.npm_package_version}-${gitHash}`),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(`${gitHash}`),
   },
   plugins: [react()],
   test: {

@@ -1,8 +1,8 @@
-# Sold Out (售罄) - 演出现场周边销售记账 PWA / Gig Merchandise Sales PWA
+# 售罄 Sold Out - 演出现场周边销售记账 PWA / Gig Merchandise Sales PWA
 
-**Sold Out (售罄)** 是一个专为小型音乐演出现场设计的渐进式网络应用 (PWA)，用于销售乐队T恤、唱片、贴纸、海报等周边产品。它旨在简化记账、加速销售流程，并方便在演出结束后快速盘点库存。本应用为移动设备优先设计，并支持完全离线运行。
+**售罄 Sold Out** 是一个专为小型音乐演出现场设计的渐进式网络应用 (PWA)，用于销售乐队T恤、唱片、贴纸、海报等周边产品。它旨在简化记账、加速销售流程，并方便在演出结束后快速盘点库存。本应用为移动设备优先设计，并支持完全离线运行。
 
-**Sold Out (售罄)** is a Progressive Web App (PWA) specifically designed for managing merchandise sales at small music gigs, such as selling band T-shirts, records, stickers, and posters. It aims to simplify accounting, speed up the sales process, and make inventory reconciliation easy after the show. The app is mobile-first and fully functional offline.
+**售罄 Sold Out** is a Progressive Web App (PWA) specifically designed for managing merchandise sales at small music gigs, such as selling band T-shirts, records, stickers, and posters. It aims to simplify accounting, speed up the sales process, and make inventory reconciliation easy after the show. The app is mobile-first and fully functional offline.
 
 ---
 
