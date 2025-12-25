@@ -1,34 +1,74 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import React, { useState } from 'react'
+import { TabBar } from 'antd-mobile'
+import {
+  AppOutline,
+  UnorderedListOutline,
+  BillOutline,
+  CalculatorOutline,
+  SetOutline,
+} from 'antd-mobile-icons'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+  const [activeKey, setActiveKey] = useState('sale')
+
+  const tabs = [
+    {
+      key: 'sale',
+      title: '记账',
+      icon: <BillOutline />,
+    },
+    {
+      key: 'inventory',
+      title: '库存',
+      icon: <UnorderedListOutline />,
+    },
+    {
+      key: 'orders',
+      title: '订单',
+      icon: <AppOutline />,
+    },
+    {
+      key: 'stats',
+      title: '统计',
+      icon: <CalculatorOutline />,
+    },
+    {
+      key: 'settings',
+      title: '设置',
+      icon: <SetOutline />,
+    },
+  ]
+
+  // A simple component to render based on active tab
+  const renderContent = () => {
+    switch (activeKey) {
+      case 'sale':
+        return <div>记账页面</div>
+      case 'inventory':
+        return <div>库存页面</div>
+      case 'orders':
+        return <div>订单页面</div>
+      case 'stats':
+        return <div>统计页面</div>
+      case 'settings':
+        return <div>设置页面</div>
+      default:
+        return <div>记账页面</div>
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ flex: 1 }}>
+        {renderContent()}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+      <TabBar activeKey={activeKey} onChange={setActiveKey}>
+        {tabs.map(item => (
+          <TabBar.Item key={item.key} icon={item.icon} title={item.title} />
+        ))}
+      </TabBar>
+    </div>
   )
 }
 
