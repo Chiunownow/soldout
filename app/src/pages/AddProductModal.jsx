@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Button, InputNumber } from 'antd-mobile';
+import { Modal, Form, Input, Button, InputNumber, Space, Toast } from 'antd-mobile';
+import { AddOutline, MinusCircleOutline } from 'antd-mobile-icons';
 import { db } from '../db';
 
 const AddProductModal = ({ visible, onClose }) => {
@@ -7,18 +8,31 @@ const AddProductModal = ({ visible, onClose }) => {
 
   const onFinish = async (values) => {
     try {
+      // Filter out empty attribute key-value pairs
+      const filteredAttributes = values.attributes
+        ? values.attributes.filter(attr => attr.key && attr.value)
+        : [];
+
       await db.products.add({
         name: values.name,
         price: parseFloat(values.price),
         stock: parseInt(values.stock, 10),
         description: values.description,
-        attributes: [], // Will implement attributes later
+        attributes: filteredAttributes,
         createdAt: new Date(),
       });
       form.resetFields();
+      Toast.show({
+        icon: 'success',
+        content: '产品添加成功',
+      });
       onClose();
     } catch (error) {
       console.error('Failed to add product:', error);
+      Toast.show({
+        icon: 'fail',
+        content: '产品添加失败',
+      });
     }
   };
 
@@ -62,6 +76,50 @@ const AddProductModal = ({ visible, onClose }) => {
           <Form.Item name="description" label="文字描述">
             <Input.TextArea placeholder="可选" />
           </Form.Item>
+
+          <Form.List name="attributes">
+            {({ add, remove, fields }) => {
+              return (
+                <>
+                  {fields.map((field, index) => {
+                    return (
+                      <Space key={field.key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                        <Form.Item
+                          {...field}
+                          label={index === 0 ? '子属性' : ''} // Only show label for the first item
+                          name={[field.name, 'key']}
+                          rules={[{ required: true, message: '请输入属性名称' }]}
+                          style={{ flex: 1 }}
+                        >
+                          <Input placeholder="属性名称 (如: 颜色)" />
+                        </Form.Item>
+                        <Form.Item
+                          {...field}
+                          label={index === 0 ? '属性值' : ''} // Only show label for the first item
+                          name={[field.name, 'value']}
+                          rules={[{ required: true, message: '请输入属性值' }]}
+                          style={{ flex: 1 }}
+                        >
+                          <Input placeholder="属性值 (如: 红色)" />
+                        </Form.Item>
+                        <MinusCircleOutline onClick={() => remove(field.name)} />
+                      </Space>
+                    )
+                  })}
+                  <Button
+                    onClick={() => add()}
+                    block
+                    // color="primary" // Consider a subtle color or outline for this button
+                    fill='outline'
+                    size='small'
+                    icon={<AddOutline />}
+                  >
+                    添加子属性
+                  </Button>
+                </>
+              )
+            }}
+          </Form.List>
         </Form>
       }
     />
