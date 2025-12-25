@@ -26,6 +26,22 @@ const App = () => {
   const [outOfStockItems, setOutOfStockItems] = useState([]);
   const [checkoutArgs, setCheckoutArgs] = useState(null);
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   useEffect(() => {
     const checkFirstVisit = async () => {
@@ -128,6 +144,16 @@ const App = () => {
     setCart(newCart);
     saveCartToDb(newCart);
     setClearCartDialogVisible(false);
+  };
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) {
+      return;
+    }
+    const result = await installPrompt.prompt();
+    console.log(`Install prompt result: ${result.outcome}`);
+    setInstallPrompt(null);
+    setShowInstallButton(false);
   };
 
   const proceedWithCheckout = async (paymentChannelId, cartToCheckout) => {
@@ -268,7 +294,10 @@ const App = () => {
       case 'stats':
         return <Stats />
       case 'settings':
-        return <Settings />
+        return <Settings 
+          showInstallButton={showInstallButton}
+          onInstallClick={handleInstallClick}
+        />
       default:
         return <Sale />
     }

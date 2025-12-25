@@ -7,7 +7,7 @@ import { useNotification } from '../NotificationContext';
 import useLongPress from '../useLongPress';
 import PageHeader from '../components/PageHeader';
 
-const Settings = () => {
+const Settings = ({ showInstallButton, onInstallClick }) => {
   const { showNotification } = useNotification();
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   const [addChannelOpen, setAddChannelOpen] = useState(false);
@@ -107,6 +107,19 @@ const Settings = () => {
     <>
       <PageHeader title="设置" />
       <Box sx={{ p: 2 }}>
+        {showInstallButton && (
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>安装应用</Typography>
+              <Button fullWidth variant="contained" onClick={onInstallClick}>
+                添加到主屏幕
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                将此应用安装到您的设备主屏幕，以便快速访问和离线使用。
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>支付渠道管理</Typography>
