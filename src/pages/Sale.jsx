@@ -110,11 +110,9 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
                   <IconButton onClick={() => onGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
-                      {item.isGift && (
-                        <Typography variant="caption" color={item.isGift ? 'primary' : 'text.disabled'} sx={{ mt: -0.5 }}>
-                          赠品
-                        </Typography>
-                      )}
+                      <Typography variant="caption" color={item.isGift ? 'primary' : 'text.disabled'} sx={{ mt: -0.5 }}>
+                        赠品
+                      </Typography>
                     </Box>
                   </IconButton>
                   <ListItemText
