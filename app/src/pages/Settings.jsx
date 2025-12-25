@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Button, SwipeAction, Dialog, Toast, Tag } from 'antd-mobile';
+import { List, Button, SwipeAction, Dialog, Toast, Tag, Card } from 'antd-mobile';
 
 const Settings = () => {
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
