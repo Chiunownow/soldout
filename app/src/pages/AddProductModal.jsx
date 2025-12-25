@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, Toast } from 'antd-mobile';
 import { AddOutline, MinusCircleOutline } from 'antd-mobile-icons';
 import { db } from '../db';
-import './ManualForm.css';
 
 const AddProductModal = ({ visible, onClose }) => {
   const [name, setName] = useState('');

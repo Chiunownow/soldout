@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Input, Button, Toast } from 'antd-mobile';
 import { AddOutline, MinusCircleOutline } from 'antd-mobile-icons';
 import { db } from '../db';
-import './ManualForm.css';
+
 
 const EditProductModal = ({ visible, onClose, product }) => {
     const [name, setName] = useState('');
