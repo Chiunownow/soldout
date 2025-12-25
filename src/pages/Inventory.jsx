@@ -116,6 +116,7 @@ const Inventory = () => {
       />
       
       <EditProductModal
+        key={editingProduct ? editingProduct.id : 'edit-modal'} // Add key prop to force re-mount
         open={editModalVisible}
         onClose={() => {
           setEditModalVisible(false);
