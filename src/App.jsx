@@ -194,7 +194,15 @@ const App = () => {
   const handleCheckout = async (paymentChannelId) => {
     if (cart.length === 0) return;
 
-    const paymentChannel = await db.paymentChannels.get(paymentChannelId);
+    let effectivePaymentChannelId = paymentChannelId;
+    if (cart.every(item => item.isGift)) {
+      const giftChannel = await db.paymentChannels.where('name').equals('赠送').first();
+      if (giftChannel) {
+        effectivePaymentChannelId = giftChannel.id;
+      }
+    }
+
+    const paymentChannel = await db.paymentChannels.get(effectivePaymentChannelId);
     let cartForCheckout = [...cart];
 
     if (paymentChannel && paymentChannel.name === '赠送') {
@@ -226,10 +234,10 @@ const App = () => {
 
     if (itemsWithStockIssues.length > 0) {
       setOutOfStockItems(itemsWithStockIssues);
-      setCheckoutArgs({ paymentChannelId, cartForCheckout });
+      setCheckoutArgs({ paymentChannelId: effectivePaymentChannelId, cartForCheckout });
       setStockWarningDialogOpen(true);
     } else {
-      await proceedWithCheckout(paymentChannelId, cartForCheckout);
+      await proceedWithCheckout(effectivePaymentChannelId, cartForCheckout);
     }
   };
 
