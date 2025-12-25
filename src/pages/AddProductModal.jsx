@@ -162,7 +162,7 @@ const AddProductModal = ({ open, onClose }) => {
                   fullWidth 
                   helperText={"设置商品总库存。添加子属性后，此项将无效。"}
                 />
-                <TextField label="文字描述" placeholder="可选" multiline rows={3} value={description} onChange={e => setDescription(e.target.value)} fullWidth />
+                <TextField label="文字描述" placeholder="可选" value={description} onChange={e => setDescription(e.target.value)} fullWidth />
             </>
         )
     }
@@ -172,7 +172,7 @@ const AddProductModal = ({ open, onClose }) => {
             <>
                 <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => setName(e.target.value)} fullWidth />
                 <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => setPrice(e.target.value)} fullWidth />
-                <TextField label="文字描述" placeholder="可选" multiline rows={3} value={description} onChange={e => setDescription(e.target.value)} fullWidth />
+                <TextField label="文字描述" placeholder="可选" value={description} onChange={e => setDescription(e.target.value)} fullWidth />
             </>
         )
       case 1: // Define Attributes
@@ -277,7 +277,7 @@ const AddProductModal = ({ open, onClose }) => {
                   fullWidth 
                   helperText={"设置商品总库存。添加子属性后，此项将无效。"}
                 />
-                <TextField label="文字描述" placeholder="可选" multiline rows={3} value={description} onChange={e => setDescription(e.target.value)} fullWidth />
+                <TextField label="文字描述" placeholder="可选" value={description} onChange={e => setDescription(e.target.value)} fullWidth />
               </>
             ) : renderStepContent()}
             <FormControlLabel
