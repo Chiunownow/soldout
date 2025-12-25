@@ -12,17 +12,7 @@ vi.mock('../db', () => ({
   },
 }));
 
-vi.mock('antd-mobile', async (importOriginal) => {
-  const antd = await importOriginal();
-  return {
-    ...antd,
-    Toast: {
-      show: vi.fn(),
-    },
-  };
-});
-
-describe('AddProductModal with Full Manual Form', () => {
+describe('AddProductModal with MUI', () => {
   const handleClose = vi.fn();
 
   afterEach(() => {
@@ -30,27 +20,27 @@ describe('AddProductModal with Full Manual Form', () => {
   });
 
   it('renders correctly', () => {
-    render(<AddProductModal visible={true} onClose={handleClose} />);
+    render(<AddProductModal open={true} onClose={handleClose} />);
     expect(screen.getByText('添加新产品')).toBeInTheDocument();
   });
 
   it('submits all form data correctly', async () => {
-    render(<AddProductModal visible={true} onClose={handleClose} />);
+    render(<AddProductModal open={true} onClose={handleClose} />);
 
     // Fill in basic fields
-    fireEvent.change(screen.getByPlaceholderText('例如：T恤'), { target: { value: 'Full Product' } });
-    fireEvent.change(screen.getByPlaceholderText('例如：99.00'), { target: { value: '150' } });
-    fireEvent.change(screen.getByPlaceholderText('例如：100'), { target: { value: '200' } });
-    fireEvent.change(screen.getByPlaceholderText('可选'), { target: { value: 'Full description' } });
+    fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Full Product' } });
+    fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '150' } });
+    fireEvent.change(screen.getByLabelText('初始库存'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText('文字描述'), { target: { value: 'Full description' } });
 
     // Add and fill a sub-attribute
-    fireEvent.click(screen.getByText(/添加子属性/));
-    await screen.findByPlaceholderText('属性名称 (如: 颜色)');
-    fireEvent.change(screen.getByPlaceholderText('属性名称 (如: 颜色)'), { target: { value: 'Color' } });
-    fireEvent.change(screen.getByPlaceholderText('属性值 (如: 红色)'), { target: { value: 'Blue' } });
+    fireEvent.click(screen.getByRole('button', { name: /添加子属性/i }));
+    await screen.findByLabelText('属性名称');
+    fireEvent.change(screen.getByLabelText('属性名称'), { target: { value: 'Color' } });
+    fireEvent.change(screen.getByLabelText('属性值'), { target: { value: 'Blue' } });
     
     // Click submit
-    fireEvent.click(screen.getByText('提交'));
+    fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
     // Assertions
     await waitFor(() => {
@@ -68,17 +58,17 @@ describe('AddProductModal with Full Manual Form', () => {
   });
 
   it('allows adding and removing sub-attribute fields', async () => {
-    render(<AddProductModal visible={true} onClose={handleClose} />);
+    render(<AddProductModal open={true} onClose={handleClose} />);
     
-    const addAttributeButton = screen.getByText(/添加子属性/);
+    const addAttributeButton = screen.getByRole('button', { name: /添加子属性/i });
     fireEvent.click(addAttributeButton);
 
-    let keyInput = await screen.findByPlaceholderText('属性名称 (如: 颜色)');
+    let keyInput = await screen.findByLabelText('属性名称');
     expect(keyInput).toBeInTheDocument();
 
-    const removeButton = screen.getByTestId('remove-attribute-btn');
+    const removeButton = screen.getByTestId('remove-attribute-btn-0');
     fireEvent.click(removeButton);
 
-    expect(screen.queryByPlaceholderText('属性名称 (如: 颜色)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('属性名称')).not.toBeInTheDocument();
   });
 });

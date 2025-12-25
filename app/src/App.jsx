@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { TabBar, Dialog } from 'antd-mobile'
-import {
-  AppOutline,
-  UnorderedListOutline,
-  BillOutline,
-  CalculatorOutline,
-  SetOutline,
-} from 'antd-mobile-icons'
-import './App.css'
+import { Box, Paper, BottomNavigation, BottomNavigationAction, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import AppsIcon from '@mui/icons-material/Apps';
+import CalculateIcon from '@mui/icons-material/Calculate';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Sale from './pages/Sale'
 import Inventory from './pages/Inventory'
 import Orders from './pages/Orders'
@@ -15,8 +12,10 @@ import Stats from './pages/Stats'
 import Settings from './pages/Settings'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
+import { useNotification } from './NotificationContext';
 
 const App = () => {
+  const { showNotification } = useNotification();
   const [activeKey, setActiveKey] = useState('sale');
   const [cart, setCart] = useState([]);
   const products = useLiveQuery(() => db.products.toArray(), []);
@@ -134,20 +133,20 @@ const App = () => {
       const newCart = [];
       setCart(newCart);
       saveCartToDb(newCart);
-      window.alert('结算成功');
+      showNotification('结算成功', 'success');
 
     } catch (error) {
       console.error('Failed to checkout:', error);
-      window.alert('结算失败，请重试');
+      showNotification('结算失败，请重试', 'error');
     }
   };
 
   const tabs = [
-    { key: 'sale', title: '记账', icon: <BillOutline /> },
-    { key: 'inventory', title: '库存', icon: <UnorderedListOutline /> },
-    { key: 'orders', title: '订单', icon: <AppOutline /> },
-    { key: 'stats', title: '统计', icon: <CalculatorOutline /> },
-    { key: 'settings', title: '设置', icon: <SetOutline /> },
+    { key: 'sale', title: '记账', icon: <ReceiptLongIcon /> },
+    { key: 'inventory', title: '库存', icon: <InventoryIcon /> },
+    { key: 'orders', title: '订单', icon: <AppsIcon /> },
+    { key: 'stats', title: '统计', icon: <CalculateIcon /> },
+    { key: 'settings', title: '设置', icon: <SettingsIcon /> },
   ];
 
   const renderContent = () => {
@@ -176,23 +175,40 @@ const App = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+      <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {renderContent()}
-      </div>
-      <TabBar activeKey={activeKey} onChange={setActiveKey}>
-        {tabs.map(item => (
-          <TabBar.Item key={item.key} icon={item.icon} title={item.title} />
-        ))}
-      </TabBar>
+      </Box>
+      <Paper sx={{ position: 'sticky', bottom: 0, left: 0, right: 0 }} elevation={3}>
+        <BottomNavigation
+          showLabels
+          value={activeKey}
+          onChange={(event, newValue) => {
+            setActiveKey(newValue);
+          }}
+        >
+          {tabs.map(item => (
+            <BottomNavigationAction key={item.key} label={item.title} value={item.key} icon={item.icon} />
+          ))}
+        </BottomNavigation>
+      </Paper>
 
       <Dialog
-        visible={clearCartDialogVisible}
+        open={clearCartDialogVisible}
         onClose={() => setClearCartDialogVisible(false)}
-        content={'确定要清空购物车吗？'}
-        actions={[[{ key: 'cancel', text: '取消' }, { key: 'confirm', text: '确定', bold: true, danger: true, onClick: confirmClearCart }]]}
-      />
-    </div>
+      >
+        <DialogTitle>清空购物车</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            确定要清空购物车吗？此操作无法撤销。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearCartDialogVisible(false)}>取消</Button>
+          <Button onClick={confirmClearCart} color="error">确定</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   )
 }
 

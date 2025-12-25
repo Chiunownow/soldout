@@ -1,78 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, Picker } from 'antd-mobile';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, FormControl, InputLabel, Select, MenuItem, Box } from '@mui/material';
 
-const AttributeSelector = ({ visible, product, onConfirm, onClose }) => {
-  const [form] = Form.useForm();
-  const [pickerColumns, setPickerColumns] = useState([]);
+const AttributeSelector = ({ open, product, onConfirm, onClose }) => {
+  const [selectedAttributes, setSelectedAttributes] = useState({});
 
+  // Reset state when product changes
   useEffect(() => {
-    if (product && product.attributes) {
-      // For simplicity, this POC will only handle the first attribute.
-      // A full implementation would need to generate a picker/selector for each attribute key.
-      const firstAttribute = product.attributes[0];
-      if (firstAttribute) {
-        // This assumes the value is a comma-separated string like "Red,Blue,Green"
-        // In a real app, the data structure might be better, e.g., an array.
-        const options = firstAttribute.value.split(',').map(v => ({ label: v, value: v }));
-        setPickerColumns([{
-            key: firstAttribute.key,
-            options: options,
-        }]);
-      }
-    }
-  }, [product]);
+    setSelectedAttributes({});
+  }, [open, product]);
 
-  const onFinish = (values) => {
-    // `values` will be like { attribute_Color: "Red" }
-    // We need to transform it back to the standard format.
-    const selectedAttributes = Object.keys(values).map(formKey => {
-        const key = formKey.replace('attribute_', '');
-        return { key: key, value: values[formKey] };
-    });
-    onConfirm(product, selectedAttributes);
-    form.resetFields();
+  const handleConfirm = () => {
+    const attributesAsArray = Object.keys(selectedAttributes).map(key => ({
+      key: key,
+      value: selectedAttributes[key],
+    }));
+    onConfirm(product, attributesAsArray);
     onClose();
   };
 
-  if (!product) return null;
+  if (!product || !product.attributes || product.attributes.length === 0) {
+    return null;
+  }
+  
+  const allAttributesSelected = product.attributes.every(attr => selectedAttributes[attr.key]);
 
   return (
-    <Modal
-      visible={visible}
-      onClose={onClose}
-      title={`选择 ${product.name} 的属性`}
-      content={
-        <Form
-          form={form}
-          onFinish={onFinish}
-          footer={
-            <Button block type="submit" color="primary">
-              确定
-            </Button>
-          }
-        >
-          {pickerColumns.map(col => (
-             <Form.Item
-                key={col.key}
-                name={`attribute_${col.key}`}
-                label={col.key}
-                trigger='onConfirm'
-                onClick={(e, pickerRef) => {
-                    pickerRef.current?.open()
-                }}
-             >
-                <Picker columns={[col.options]}>
-                    {value =>
-                        (value && value.length > 0)
-                        ? value[0].label
-                        : '请选择'
-                    }
-                </Picker>
-            </Form.Item>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>选择 {product.name} 的属性</DialogTitle>
+      <DialogContent>
+        <Box component="div" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+          {product.attributes.map(attr => (
+            <FormControl fullWidth key={attr.key}>
+              <InputLabel id={`${attr.key}-select-label`}>{attr.key}</InputLabel>
+              <Select
+                labelId={`${attr.key}-select-label`}
+                label={attr.key}
+                value={selectedAttributes[attr.key] || ''}
+                onChange={e => setSelectedAttributes(prev => ({...prev, [attr.key]: e.target.value}))}
+              >
+                {(attr.value || '').split(',').map(option => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           ))}
-        </Form>
-      }
-    />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>取消</Button>
+        <Button onClick={handleConfirm} variant="contained" disabled={!allAttributesSelected}>
+          确定
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

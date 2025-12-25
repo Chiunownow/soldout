@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Empty, FloatingBubble, SwipeAction } from 'antd-mobile';
-import { AddOutline } from 'antd-mobile-icons';
+import { List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Fab, Typography, Box } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AddProductModal from './AddProductModal';
+import { useNotification } from '../NotificationContext';
 import EditProductModal from './EditProductModal';
 
 const Inventory = () => {
+  const { showNotification } = useNotification();
   const products = useLiveQuery(() => db.products.toArray(), []);
   
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -25,77 +29,78 @@ const Inventory = () => {
   const handleDelete = async (id) => {
     try {
       await db.products.delete(id);
-      window.alert('已删除');
+      showNotification('已删除', 'success');
     } catch (error) {
       console.error('Failed to delete product:', error);
-      window.alert('删除失败');
+      showNotification('删除失败', 'error');
     }
   };
 
   return (
-    <div>
+    <Box sx={{ paddingBottom: '80px' }}> {/* Add padding to avoid overlap with FAB */}
       {products && products.length > 0 ? (
-        <List header="产品列表">
+        <List subheader={<Typography variant="h6" sx={{ padding: 2 }}>产品列表</Typography>}>
           {products.map(product => (
-            <SwipeAction
-              key={product.id}
-              rightActions={[
-                {
-                  key: 'edit',
-                  text: '编辑',
-                  color: 'primary',
-                  onClick: () => handleEdit(product),
-                },
-                {
-                  key: 'delete',
-                  text: '删除',
-                  color: 'danger',
-                  onClick: () => handleDelete(product.id),
-                },
-              ]}
-            >
-              <List.Item
-                description={
-                  <div>
-                    <div>库存: {product.stock || 0}</div>
+            <ListItem key={product.id} divider>
+              <ListItemText
+                primary={product.name}
+                secondary={
+                  <Box component="span">
+                    <Typography component="span" variant="body2" color="text.primary">
+                      库存: {product.stock || 0}
+                    </Typography>
                     {product.attributes && product.attributes.map(attr => (
-                      <div key={attr.key}>{`${attr.key}: ${attr.value}`}</div>
+                      <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block' }} key={attr.key}>
+                        {`${attr.key}: ${attr.value}`}
+                      </Typography>
                     ))}
-                  </div>
+                  </Box>
                 }
-              >
-                {product.name}
-              </List.Item>
-            </SwipeAction>
+              />
+              <ListItemSecondaryAction>
+                <IconButton edge="end" aria-label="edit" onClick={() => handleEdit(product)}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(product.id)}>
+                  <DeleteIcon />
+                </IconButton>
+              </ListItemSecondaryAction>
+            </ListItem>
           ))}
         </List>
       ) : (
-        <Empty description={<div><p>还没有产品，快去添加吧</p><p>小贴士：产品列表支持左滑编辑和删除哦！</p></div>} />
+        <Box sx={{ textAlign: 'center', mt: 8 }}>
+            <Typography variant="subtitle1">还没有产品，快去添加吧</Typography>
+            <Typography variant="body2" color="text.secondary">小贴士：产品列表支持编辑和删除哦！</Typography>
+        </Box>
       )}
-      <FloatingBubble
-        style={{
-          '--initial-position-bottom': '80px',
-          '--initial-position-right': '24px',
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{
+          position: 'fixed',
+          bottom: 80,
+          right: 24,
         }}
         onClick={handleAddProduct}
       >
-        <AddOutline fontSize={32} />
-      </FloatingBubble>
+        <AddIcon />
+      </Fab>
       
       <AddProductModal 
-        visible={addModalVisible} 
+        open={addModalVisible} 
         onClose={() => setAddModalVisible(false)} 
       />
       
       <EditProductModal
-        visible={editModalVisible}
+        open={editModalVisible}
         onClose={() => {
           setEditModalVisible(false);
           setEditingProduct(null);
         }}
         product={editingProduct}
       />
-    </div>
+    </Box>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { Card, List, Empty } from 'antd-mobile';
+import { Box, Card, CardContent, List, ListItem, ListItemText, Typography, CircularProgress } from '@mui/material';
 
 const Stats = () => {
   const orders = useLiveQuery(() => db.orders.where('status').equals('completed').toArray(), []);
@@ -62,45 +62,72 @@ const Stats = () => {
   }, [orders, products, channels]);
 
   if (!stats) {
-    return <Empty description="正在加载统计数据..." style={{ padding: '64px 0' }} />;
+    return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <CircularProgress />
+        </Box>
+    );
   }
   
   const { totalRevenue, totalOrders, channelStats, topProducts, giftedValue } = stats;
 
   return (
-    <div style={{ padding: '12px' }}>
-      <Card title="关键指标">
-        <List>
-          <List.Item extra={`¥ ${totalRevenue.toFixed(2)}`}>总收入</List.Item>
-          <List.Item extra={totalOrders}>总订单数</List.Item>
-          <List.Item extra={`¥ ${giftedValue.toFixed(2)}`}>赠送总价值</List.Item>
-        </List>
+    <Box sx={{ p: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>
+            统计
+        </Typography>
+      <Card>
+        <CardContent>
+            <Typography variant="h6" gutterBottom>关键指标</Typography>
+            <List dense>
+                <ListItem>
+                    <ListItemText primary="总收入" />
+                    <Typography variant="body1">¥ {totalRevenue.toFixed(2)}</Typography>
+                </ListItem>
+                <ListItem>
+                    <ListItemText primary="总订单数" />
+                    <Typography variant="body1">{totalOrders}</Typography>
+                </ListItem>
+                <ListItem>
+                    <ListItemText primary="赠送总价值" />
+                    <Typography variant="body1">¥ {giftedValue.toFixed(2)}</Typography>
+                </ListItem>
+            </List>
+        </CardContent>
       </Card>
 
-      <Card title="渠道统计" style={{ marginTop: '12px' }}>
-        <List>
-          {channelStats.map(channel => (
-            <List.Item key={channel.id} extra={`¥ ${channel.totalAmount.toFixed(2)}`}>
-              {channel.name} ({channel.orderCount} 笔)
-            </List.Item>
-          ))}
-        </List>
-      </Card>
-
-      <Card title="热销产品 Top 5" style={{ marginTop: '12px' }}>
-        {topProducts.length > 0 ? (
-          <List>
-            {topProducts.map((product, index) => (
-              <List.Item key={index} extra={`售出 ${product.quantity} 件`}>
-                {product.name}
-              </List.Item>
+      <Card sx={{ mt: 2 }}>
+        <CardContent>
+            <Typography variant="h6" gutterBottom>渠道统计</Typography>
+            <List dense>
+            {channelStats.map(channel => (
+                <ListItem key={channel.id}>
+                    <ListItemText primary={`${channel.name} (${channel.orderCount} 笔)`} />
+                    <Typography variant="body1">¥ {channel.totalAmount.toFixed(2)}</Typography>
+                </ListItem>
             ))}
-          </List>
-        ) : (
-          <Empty description="暂无销售记录" />
-        )}
+            </List>
+        </CardContent>
       </Card>
-    </div>
+
+      <Card sx={{ mt: 2 }}>
+        <CardContent>
+            <Typography variant="h6" gutterBottom>热销产品 Top 5</Typography>
+            {topProducts.length > 0 ? (
+                <List dense>
+                    {topProducts.map((product, index) => (
+                    <ListItem key={index}>
+                        <ListItemText primary={product.name} />
+                        <Typography variant="body2">售出 {product.quantity} 件</Typography>
+                    </ListItem>
+                    ))}
+                </List>
+            ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>暂无销售记录</Typography>
+            )}
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 

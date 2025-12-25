@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Empty, Modal, Tag, Dialog } from 'antd-mobile';
+import { List, ListItem, ListItemButton, ListItemText, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Chip } from '@mui/material';
 
 const Orders = () => {
   const orders = useLiveQuery(
@@ -19,7 +19,6 @@ const Orders = () => {
   };
 
   const openCancelConfirm = () => {
-    // We close the details modal first to show the confirmation dialog underneath
     setDetailsModalVisible(false);
     setCancelDialogVisible(true);
   };
@@ -28,10 +27,7 @@ const Orders = () => {
     if (!selectedOrder || selectedOrder.status !== 'completed') return;
 
     try {
-      // 1. Update order status
       await db.orders.update(selectedOrder.id, { status: 'cancelled' });
-
-      // 2. Roll back stock
       await db.transaction('rw', db.products, async () => {
         for (const item of selectedOrder.items) {
           await db.products.where('id').equals(item.productId).modify(p => {
@@ -39,14 +35,11 @@ const Orders = () => {
           });
         }
       });
-      
       window.alert('订单已取消');
-
     } catch (error) {
       console.error('Failed to cancel order:', error);
       window.alert('操作失败，请重试');
     } finally {
-      // Clean up state
       setCancelDialogVisible(false);
       setSelectedOrder(null);
     }
@@ -55,89 +48,82 @@ const Orders = () => {
   const renderOrderStatus = (status) => {
     switch (status) {
       case 'completed':
-        return <Tag color='success'>已完成</Tag>;
+        return <Chip label="已完成" color="success" size="small" />;
       case 'cancelled':
-        return <Tag color='danger'>已取消</Tag>;
+        return <Chip label="已取消" color="error" size="small" />;
       default:
-        return <Tag color='default'>{status}</Tag>;
+        return <Chip label={status} size="small" />;
     }
-  }
-
-  const modalActions = (order) => {
-    const actions = [{ key: 'close', text: '关闭', onClick: () => setDetailsModalVisible(false) }];
-    if (order && order.status === 'completed') {
-      actions.unshift({
-        key: 'cancel',
-        text: '取消订单',
-        danger: true,
-        onClick: openCancelConfirm,
-      });
-    }
-    return actions;
   }
 
   return (
-    <div>
+    <Box>
+      <Typography variant="h5" sx={{ p: 2, textAlign: 'center' }}>
+        订单历史
+      </Typography>
       {orders && orders.length > 0 ? (
-        <List header="订单历史">
+        <List>
           {orders.map(order => (
-            <List.Item
-              key={order.id}
-              onClick={() => handleOrderClick(order)}
-              extra={`¥ ${order.totalAmount.toFixed(2)}`}
-              description={renderOrderStatus(order.status)}
-            >
-              {new Date(order.createdAt).toLocaleString()}
-            </List.Item>
+            <ListItemButton key={order.id} onClick={() => handleOrderClick(order)}>
+              <ListItemText
+                primary={new Date(order.createdAt).toLocaleString()}
+                secondary={renderOrderStatus(order.status)}
+              />
+              <Typography variant="body1">¥ {order.totalAmount.toFixed(2)}</Typography>
+            </ListItemButton>
           ))}
         </List>
       ) : (
-        <Empty description="还没有订单记录" style={{ padding: '64px 0' }} />
+        <Box sx={{ textAlign: 'center', mt: 8 }}>
+            <Typography variant="subtitle1">还没有订单记录</Typography>
+        </Box>
       )}
 
-      <Modal
-        visible={detailsModalVisible}
-        onClose={() => setDetailsModalVisible(false)}
-        title="订单详情"
-        content={
-          selectedOrder && (
-            <div>
-              <p><strong>订单号:</strong> {selectedOrder.id}</p>
-              <p><strong>时间:</strong> {new Date(selectedOrder.createdAt).toLocaleString()}</p>
-              <p><strong>总金额:</strong> ¥ {selectedOrder.totalAmount.toFixed(2)}</p>
-              <p><strong>状态:</strong> {renderOrderStatus(selectedOrder.status)}</p>
-              <List header="商品列表">
+      <Dialog open={detailsModalVisible} onClose={() => setDetailsModalVisible(false)} fullWidth maxWidth="xs">
+        <DialogTitle>订单详情</DialogTitle>
+        <DialogContent>
+          {selectedOrder && (
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom><strong>订单号:</strong> {selectedOrder.id}</Typography>
+              <Typography gutterBottom><strong>时间:</strong> {new Date(selectedOrder.createdAt).toLocaleString()}</Typography>
+              <Typography gutterBottom><strong>总金额:</strong> ¥ {selectedOrder.totalAmount.toFixed(2)}</Typography>
+              <Typography component="div" gutterBottom><strong>状态:</strong> {renderOrderStatus(selectedOrder.status)}</Typography>
+              <List dense subheader={<Typography variant="subtitle2" sx={{ mt: 2 }}>商品列表</Typography>}>
                 {selectedOrder.items.map((item, index) => (
-                  <List.Item key={index} extra={`x${item.quantity}`}>
-                    {item.name} {item.isGift && <Tag color='warning'>赠品</Tag>}
-                  </List.Item>
+                  <ListItem key={index}>
+                    <ListItemText primary={item.name} />
+                    <Typography variant="body2">
+                      {item.isGift && <Chip label="赠品" size="small" sx={{ mr: 1 }} />}
+                      x{item.quantity}
+                    </Typography>
+                  </ListItem>
                 ))}
               </List>
-            </div>
-          )
-        }
-        actions={modalActions(selectedOrder)}
-      />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setDetailsModalVisible(false)}>关闭</Button>
+            {selectedOrder && selectedOrder.status === 'completed' && (
+                <Button onClick={openCancelConfirm} color="error">取消订单</Button>
+            )}
+        </DialogActions>
+      </Dialog>
 
       <Dialog
-        visible={cancelDialogVisible}
+        open={cancelDialogVisible}
         onClose={() => setCancelDialogVisible(false)}
-        content={'确定要取消此订单吗？库存将会被回退。'}
-        actions={[
-          {
-            key: 'cancel',
-            text: '点错了',
-          },
-          {
-            key: 'confirm',
-            text: '确定取消',
-            bold: true,
-            danger: true,
-            onClick: executeCancelOrder,
-          },
-        ]}
-      />
-    </div>
+      >
+        <DialogTitle>确认取消订单</DialogTitle>
+        <DialogContent>
+            <Typography>确定要取消此订单吗？库存将会被回退。</Typography>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setCancelDialogVisible(false)}>点错了</Button>
+            <Button onClick={executeCancelOrder} color="error" variant="contained">确定取消</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
