@@ -15,7 +15,7 @@ db.version(3).stores({
           { name: '微信', isSystemChannel: false },
           { name: '支付宝', isSystemChannel: false },
           { name: '现金', isSystemChannel: false },
-          { name: '赠送', isSystemChannel: true },
+          { name: '整单赠送', isSystemChannel: true },
       ]);
   }
 });
@@ -41,7 +41,7 @@ db.on('populate', async () => {
     { name: '微信', isSystemChannel: false },
     { name: '支付宝', isSystemChannel: false },
     { name: '现金', isSystemChannel: false },
-    { name: '赠送', isSystemChannel: true },
+    { name: '整单赠送', isSystemChannel: true },
   ]);
 });
 

@@ -135,7 +135,7 @@ const App = () => {
 
     const paymentChannel = await db.paymentChannels.get(paymentChannelId);
 
-    const totalAmount = (paymentChannel && paymentChannel.name === '赠送')
+    const totalAmount = (paymentChannel && paymentChannel.name === '整单赠送')
       ? 0
       : cartToCheckout.reduce((sum, item) => sum + (item.isGift ? 0 : item.price * item.quantity), 0);
 
@@ -196,7 +196,7 @@ const App = () => {
 
     let effectivePaymentChannelId = paymentChannelId;
     if (cart.every(item => item.isGift)) {
-      const giftChannel = await db.paymentChannels.where('name').equals('赠送').first();
+      const giftChannel = await db.paymentChannels.where('name').equals('整单赠送').first();
       if (giftChannel) {
         effectivePaymentChannelId = giftChannel.id;
       }
@@ -205,7 +205,7 @@ const App = () => {
     const paymentChannel = await db.paymentChannels.get(effectivePaymentChannelId);
     let cartForCheckout = [...cart];
 
-    if (paymentChannel && paymentChannel.name === '赠送') {
+    if (paymentChannel && paymentChannel.name === '整单赠送') {
       cartForCheckout = cart.map(item => ({ ...item, isGift: false }));
     }
 
