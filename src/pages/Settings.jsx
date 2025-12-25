@@ -172,18 +172,20 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
         </Card>
 
         <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
-          <Typography variant="h6">售罄 Sold Out</Typography>
+          <Typography variant="h6">
+            售罄 Sold Out
+            <IconButton
+              aria-label="GitHub repository"
+              onClick={() => window.open('https://github.com/Chiunownow/soldout', '_blank')}
+              color="inherit"
+              sx={{ ml: 1, verticalAlign: 'middle' }}
+            >
+              <GitHubIcon fontSize="small" />
+            </IconButton>
+          </Typography>
           <Typography variant="caption">
             Version: {import.meta.env.VITE_APP_VERSION || 'dev'}
           </Typography>
-          <IconButton
-            aria-label="GitHub repository"
-            onClick={() => window.open('https://github.com/Chiunownow/soldout', '_blank')}
-            color="inherit"
-            sx={{ mt: 1 }}
-          >
-            <GitHubIcon />
-          </IconButton>
         </Box>
       </Box>
       
