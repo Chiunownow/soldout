@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
+import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
 
 const ProductPickerDialog = ({ open, onClose, products, onSelectProduct }) => {
   const handleSelect = (productId) => {
@@ -14,7 +14,17 @@ const ProductPickerDialog = ({ open, onClose, products, onSelectProduct }) => {
         {(products || []).map((product) => (
           <ListItem disableGutters key={product.id}>
             <ListItemButton onClick={() => handleSelect(product.id)}>
-              <ListItemText primary={product.name} />
+              <ListItemText 
+                primary={product.name} 
+                secondary={
+                  <React.Fragment>
+                    {product.description && <Typography component="span" variant="body2" color="text.secondary">{product.description}</Typography>}
+                    <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      库存: {product.stock || 0}
+                    </Typography>
+                  </React.Fragment>
+                } 
+              />
             </ListItemButton>
           </ListItem>
         ))}

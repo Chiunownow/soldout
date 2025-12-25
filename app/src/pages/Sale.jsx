@@ -82,6 +82,7 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
         {cart.length > 0 ? (
           <List>
             {cart.map(item => {
+              if (!products) return null; // Prevent crash if products are not yet loaded
               const product = products.find(p => p.id === item.productId);
               let currentStock = 0;
               if (product) {
@@ -111,9 +112,22 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
                   </IconButton>
                   <ListItemText
                     primary={item.name}
-                    secondary={item.variantName || null}
+                    secondary={
+                      <>
+                        {item.variantName && (
+                          <Typography component="span" variant="body2">
+                            {item.variantName}
+                          </Typography>
+                        )}
+                        {item.description && (
+                          <Typography component="span" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                            {item.description}
+                          </Typography>
+                        )}
+                      </>
+                    }
                     primaryTypographyProps={{ color: isOverStock ? 'error' : 'inherit' }}
-                    secondaryTypographyProps={{ color: isOverStock ? 'error' : 'text.secondary' }}
+                    secondaryTypographyProps={{ component: 'div', color: 'text.secondary' }}
                   />
                 </ListItem>
               );

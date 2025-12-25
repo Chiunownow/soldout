@@ -53,6 +53,11 @@ const Inventory = () => {
                   primary={product.name}
                   secondary={
                     <Box component="span">
+                      {product.description && (
+                        <Typography component="p" variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                          {product.description}
+                        </Typography>
+                      )}
                       <Typography component="span" variant="body2" color="text.primary">
                         总库存: {product.stock || 0}
                       </Typography>

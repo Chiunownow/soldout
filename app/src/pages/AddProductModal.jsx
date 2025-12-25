@@ -216,7 +216,7 @@ const AddProductModal = ({ open, onClose }) => {
                         >
                             <RemoveCircleOutlineIcon />
                         </IconButton>
-                        {index < attributes.length - 1 && <Divider sx={{ my: 2 }} />}
+
                     </Box>
                 ))}
                 <Button onClick={addAttributeField} startIcon={<AddCircleOutlineIcon />} variant="outlined" size="small">添加另一属性</Button>

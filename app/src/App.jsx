@@ -87,6 +87,7 @@ const App = () => {
         productId: product.id,
         name: product.name,
         price: product.price,
+        description: product.description, // Add description here
         quantity: 1,
         isGift: false,
         variantName: variant ? variant.name : null,
