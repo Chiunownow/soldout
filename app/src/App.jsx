@@ -8,6 +8,11 @@ import {
   SetOutline,
 } from 'antd-mobile-icons'
 import './App.css'
+import Sale from './pages/Sale'
+import Inventory from './pages/Inventory'
+import Orders from './pages/Orders'
+import Stats from './pages/Stats'
+import Settings from './pages/Settings'
 
 const App = () => {
   const [activeKey, setActiveKey] = useState('sale')
@@ -44,23 +49,23 @@ const App = () => {
   const renderContent = () => {
     switch (activeKey) {
       case 'sale':
-        return <div>记账页面</div>
+        return <Sale />
       case 'inventory':
-        return <div>库存页面</div>
+        return <Inventory />
       case 'orders':
-        return <div>订单页面</div>
+        return <Orders />
       case 'stats':
-        return <div>统计页面</div>
+        return <Stats />
       case 'settings':
-        return <div>设置页面</div>
+        return <Settings />
       default:
-        return <div>记账页面</div>
+        return <Sale />
     }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {renderContent()}
       </div>
       <TabBar activeKey={activeKey} onChange={setActiveKey}>
