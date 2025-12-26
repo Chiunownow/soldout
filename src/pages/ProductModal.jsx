@@ -1,9 +1,12 @@
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import React, { useEffect, useMemo, useReducer, useRef, useCallback } from 'react';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel, Card, CardMedia } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import { db } from '../db';
+import { useNotification } from '../NotificationContext';
 import { processImage } from '../utils/image';
 
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
-
-const initialState = {
   step: 0,
   name: '',
   price: '',
