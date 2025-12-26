@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useCart } from '../CartContext';
-import { Box, Fab, Badge } from '@mui/material';
+import { Box, Fab, Badge, Typography } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PageHeader from '../components/PageHeader';
 import ProductCard from '../components/ProductCard';
@@ -49,13 +49,20 @@ const NewSale = () => {
         columnGap: '16px',
         paddingBottom: '80px' // Add padding for the FAB
        }}>
-        {products && products.map(product => (
-          <ProductCard 
-            key={product.id} 
-            product={product}
-            onClick={() => handleProductClick(product)}
-          />
-        ))}
+        {products && products.length > 0 ? (
+          products.map(product => (
+            <ProductCard 
+              key={product.id} 
+              product={product}
+              onClick={() => handleProductClick(product)}
+            />
+          ))
+        ) : (
+          <Box sx={{ textAlign: 'center', mt: 8, p: 2, gridColumn: '1 / -1' }}>
+              <Typography variant="subtitle1">还没有产品，快去库存页添加吧</Typography>
+              <Typography variant="body2" color="text.secondary">小贴士：产品图片，名称，库存都会在这里显示哦！</Typography>
+          </Box>
+        )}
       </Box>
 
       <Fab
