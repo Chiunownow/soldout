@@ -34,7 +34,7 @@ const ProductCard = ({ product, onClick }) => {
               backgroundColor: 'grey.100',
             }}
           >
-            💿👔
+            💿
           </Box>
         )}
         <CardContent>
