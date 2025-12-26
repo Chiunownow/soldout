@@ -1,3 +1,11 @@
+import React, { useReducer, useCallback } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Chip } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import { useNotification } from '../NotificationContext';
+import useLongPress from '../useLongPress';
 import { blobToDataUrl, dataUrlToBlob } from '../utils/image';
 import PageHeader from '../components/PageHeader';
 import AddChannelDialog from '../components/settings/AddChannelDialog';
