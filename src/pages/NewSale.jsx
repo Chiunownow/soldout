@@ -38,6 +38,8 @@ const NewSale = () => {
     setPaymentPickerVisible(true);
   };
 
+  const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <Box>
       <PageHeader title="记账" />
@@ -56,22 +58,21 @@ const NewSale = () => {
         ))}
       </Box>
 
-      {cart.length > 0 && (
-        <Fab
-          color="primary"
-          aria-label="cart"
-          sx={{
-            position: 'fixed',
-            bottom: 80,
-            right: 24,
-          }}
-          onClick={() => setCartDrawerVisible(true)}
-        >
-          <Badge badgeContent={cart.length} color="error">
-            <ShoppingCartIcon />
-          </Badge>
-        </Fab>
-      )}
+      <Fab
+        color="primary"
+        aria-label="cart"
+        disabled={cart.length === 0}
+        sx={{
+          position: 'fixed',
+          bottom: 80,
+          right: 24,
+        }}
+        onClick={() => setCartDrawerVisible(true)}
+      >
+        <Badge badgeContent={totalQuantity} color="error">
+          <ShoppingCartIcon />
+        </Badge>
+      </Fab>
 
       <PaymentPickerDialog
         open={paymentPickerVisible}
