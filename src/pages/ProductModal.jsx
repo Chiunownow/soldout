@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useReducer } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel } from '@mui/material';
+import React, { useEffect, useMemo, useReducer, useRef, useCallback } from 'react';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel, Card, CardMedia } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { db } from '../db';
 import { useNotification } from '../NotificationContext';
+import { processImage } from '../utils/image';
 
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
 
@@ -16,27 +17,26 @@ const initialState = {
   attributes: [],
   variants: [],
   showAttributes: false,
+  imagePreviewUrl: null,
+  processedImageBlob: null,
+  isImageRemoved: false,
 };
 
 function reducer(state, action) {
   switch (action.type) {
     case 'INITIALIZE_FORM':
-      return {
-        ...initialState,
-        ...action.payload,
-      };
+      return { ...initialState, ...action.payload };
     case 'SET_FIELD':
       return { ...state, [action.payload.field]: action.payload.value };
     case 'SET_STEP':
       return { ...state, step: action.payload };
+    case 'SET_IMAGE':
+      return { ...state, imagePreviewUrl: action.payload.previewUrl, processedImageBlob: action.payload.blob, isImageRemoved: false };
+    case 'CLEAR_IMAGE':
+      return { ...state, imagePreviewUrl: null, processedImageBlob: null, isImageRemoved: true };
     case 'TOGGLE_SHOW_ATTRIBUTES': {
       const show = action.payload;
-      return {
-        ...state,
-        showAttributes: show,
-        step: show ? state.step : 0,
-        stock: show ? '' : state.stock,
-      };
+      return { ...state, showAttributes: show, step: show ? state.step : 0, stock: show ? '' : state.stock };
     }
     case 'UPDATE_ATTRIBUTE': {
       const { index, field, value } = action.payload;
@@ -64,41 +64,78 @@ function reducer(state, action) {
 const ProductModal = ({ open, onClose, product }) => {
   const { showNotification } = useNotification();
   const isEditMode = !!product;
+  const fileInputRef = useRef(null);
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { step, name, price, description, stock, attributes, variants, showAttributes } = state;
+  const { step, name, price, description, stock, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
 
   const stepperSteps = ['基本信息', '定义属性', '设置库存'];
   const attributeNameOptions = ['尺码', '颜色'];
   const predefinedAttributeValues = { '尺码': 'S M L XL', '颜色': '黑 白' };
 
   useEffect(() => {
-    if (open) {
-      if (isEditMode && product) {
-        const productVariants = (product.variants || []).map(v => ({ ...v, stock: String(v.stock) }));
-        const hasAttributes = (product.attributes || []).length > 0;
-        dispatch({
-          type: 'INITIALIZE_FORM',
-          payload: {
-            name: product.name || '',
-            price: product.price ? String(product.price) : '',
-            description: product.description || '',
-            attributes: product.attributes || [],
-            variants: productVariants,
-            showAttributes: hasAttributes,
-            stock: hasAttributes ? '' : (product.stock ? String(product.stock) : ''),
+    const initForm = async () => {
+      if (open) {
+        if (isEditMode && product) {
+          const productVariants = (product.variants || []).map(v => ({ ...v, stock: String(v.stock) }));
+          const hasAttributes = (product.attributes || []).length > 0;
+          let imageUrl = null;
+          const imageRecord = await db.productImages.get(product.id);
+          if (imageRecord && imageRecord.imageData) {
+            imageUrl = URL.createObjectURL(imageRecord.imageData);
           }
-        });
+
+          dispatch({
+            type: 'INITIALIZE_FORM',
+            payload: {
+              name: product.name || '',
+              price: product.price ? String(product.price) : '',
+              description: product.description || '',
+              attributes: product.attributes || [],
+              variants: productVariants,
+              showAttributes: hasAttributes,
+              stock: hasAttributes ? '' : (product.stock ? String(product.stock) : ''),
+              imagePreviewUrl: imageUrl,
+            }
+          });
+        } else {
+          dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
+        }
       } else {
-        dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
+        // Clean up object URL on close
+        if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(imagePreviewUrl);
+        }
       }
-    }
+    };
+    initForm();
   }, [open, product, isEditMode]);
 
   const handleClose = () => {
     dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
     onClose();
   };
+
+  const handleFileChange = useCallback(async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    try {
+      const blob = await processImage(file);
+      dispatch({ type: 'SET_IMAGE', payload: { previewUrl, blob } });
+    } catch (error) {
+      showNotification('图片处理失败', 'error');
+      URL.revokeObjectURL(previewUrl);
+    }
+  }, [showNotification]);
+
+  const handleRemoveImage = useCallback(() => {
+    if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    dispatch({ type: 'CLEAR_IMAGE' });
+  }, [imagePreviewUrl]);
 
   const handleAttributeChange = (index, field, value) => {
     dispatch({ type: 'UPDATE_ATTRIBUTE', payload: { index, field, value } });
@@ -184,14 +221,23 @@ const ProductModal = ({ open, onClose, product }) => {
         stock: showAttributes ? totalStock : (parseInt(stock, 10) || 0),
       };
 
+      let productId = product?.id;
       if (isEditMode) {
-        await db.products.update(product.id, productData);
+        await db.products.update(productId, productData);
         showNotification('产品更新成功', 'success');
       } else {
         productData.createdAt = new Date();
-        await db.products.add(productData);
+        productId = await db.products.add(productData);
         showNotification('产品添加成功', 'success');
       }
+
+      // Handle image saving/deleting
+      if (processedImageBlob) {
+        await db.productImages.put({ productId, imageData: processedImageBlob });
+      } else if (isImageRemoved && isEditMode) {
+        await db.productImages.delete(productId);
+      }
+
       handleClose();
     } catch (error) {
       console.error('Failed to save product:', error);
@@ -200,11 +246,30 @@ const ProductModal = ({ open, onClose, product }) => {
   };
 
   const renderStepContent = () => {
+    const basicInfoFields = (
+      <>
+        {imagePreviewUrl && (
+          <Card sx={{ mb: 2 }}>
+            <CardMedia component="img" image={imagePreviewUrl} alt="Product Preview" sx={{ maxHeight: 300, objectFit: 'contain' }} />
+          </Card>
+        )}
+        <Box sx={{ display: 'flex', gap: 2, mb: imagePreviewUrl ? 1 : 0 }}>
+          <Button variant="outlined" component="label" fullWidth>
+            {imagePreviewUrl ? '更换图片' : '上传图片'}
+            <input type="file" accept="image/*" hidden onChange={handleFileChange} ref={fileInputRef} />
+          </Button>
+          {imagePreviewUrl && <Button variant="outlined" color="error" onClick={handleRemoveImage}>移除</Button>}
+        </Box>
+        <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'name', value: e.target.value } })} fullWidth />
+        <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'price', value: e.target.value } })} fullWidth />
+        <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth />
+      </>
+    );
+
     if (!showAttributes) { 
         return (
             <>
-                <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'name', value: e.target.value } })} fullWidth />
-                <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'price', value: e.target.value } })} fullWidth />
+                {basicInfoFields}
                 <TextField 
                   label="初始库存" 
                   placeholder="例如：100" 
@@ -214,20 +279,13 @@ const ProductModal = ({ open, onClose, product }) => {
                   fullWidth 
                   helperText={"设置商品总库存。添加子属性后，此项将无效。"}
                 />
-                <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth />
             </>
         )
     }
     switch (step) {
-      case 0: // Basic Info for stepper
-        return (
-            <>
-                <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'name', value: e.target.value } })} fullWidth />
-                <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'price', value: e.target.value } })} fullWidth />
-                <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth />
-            </>
-        )
-      case 1: // Define Attributes
+      case 0:
+        return basicInfoFields;
+      case 1:
         return (
             <Box>
                 <Typography variant="subtitle2" gutterBottom>定义属性名称和值</Typography>
@@ -250,7 +308,7 @@ const ProductModal = ({ open, onClose, product }) => {
                 <Button onClick={() => dispatch({ type: 'ADD_ATTRIBUTE' })} startIcon={<AddCircleOutlineIcon />} variant="outlined" size="small">添加另一属性</Button>
             </Box>
         );
-      case 2: // Set Stock
+      case 2:
         return (
             <Box>
               <Typography variant="subtitle2">为生成的规格设置库存 (总库存: {totalStock})</Typography>

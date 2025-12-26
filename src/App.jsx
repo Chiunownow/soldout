@@ -5,12 +5,14 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import AppsIcon from '@mui/icons-material/Apps';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import SettingsIcon from '@mui/icons-material/Settings';
+import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
 import Sale from './pages/Sale'
 import Inventory from './pages/Inventory'
 import Orders from './pages/Orders'
 import Stats from './pages/Stats'
 import Settings from './pages/Settings'
-import WelcomeDialog from './components/WelcomeDialog'; // Import WelcomeDialog
+import WelcomeDialog from './components/WelcomeDialog';
+import DevImageViewer from './pages/DevImageViewer';
 import { db } from './db'
 
 const App = () => {
@@ -18,22 +20,21 @@ const App = () => {
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('devmode') === 'true') {
+      setIsDevMode(true);
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
       setShowInstallButton(true);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  useEffect(() => {
     const checkFirstVisit = async () => {
       const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
       if (!hasSeenWelcome) {
@@ -45,6 +46,10 @@ const App = () => {
       }
     };
     checkFirstVisit();
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   const handleConfirmWelcome = () => {
@@ -53,9 +58,7 @@ const App = () => {
   };
 
   const handleInstallClick = async () => {
-    if (!installPrompt) {
-      return;
-    }
+    if (!installPrompt) return;
     const result = await installPrompt.prompt();
     console.log(`Install prompt result: ${result.outcome}`);
     setInstallPrompt(null);
@@ -70,23 +73,19 @@ const App = () => {
     { key: 'settings', title: '设置', icon: <SettingsIcon /> },
   ];
 
+  if (isDevMode) {
+    tabs.push({ key: 'dev', title: '开发者', icon: <DeveloperModeIcon /> });
+  }
+
   const renderContent = () => {
     switch (activeKey) {
-      case 'sale':
-        return <Sale />
-      case 'inventory':
-        return <Inventory />
-      case 'orders':
-        return <Orders />
-      case 'stats':
-        return <Stats />
-      case 'settings':
-        return <Settings 
-          showInstallButton={showInstallButton}
-          onInstallClick={handleInstallClick}
-        />
-      default:
-        return <Sale />
+      case 'sale': return <Sale />;
+      case 'inventory': return <Inventory />;
+      case 'orders': return <Orders />;
+      case 'stats': return <Stats />;
+      case 'settings': return <Settings showInstallButton={showInstallButton} onInstallClick={handleInstallClick} />;
+      case 'dev': return isDevMode ? <DevImageViewer /> : <Sale />;
+      default: return <Sale />;
     }
   }
 
@@ -99,9 +98,7 @@ const App = () => {
         <BottomNavigation
           showLabels
           value={activeKey}
-          onChange={(event, newValue) => {
-            setActiveKey(newValue);
-          }}
+          onChange={(event, newValue) => setActiveKey(newValue)}
         >
           {tabs.map(item => (
             <BottomNavigationAction 
@@ -114,7 +111,6 @@ const App = () => {
           ))}
         </BottomNavigation>
       </Paper>
-
       <WelcomeDialog open={welcomeDialogOpen} onConfirm={handleConfirmWelcome} />
     </Box>
   )
