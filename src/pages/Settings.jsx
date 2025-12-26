@@ -173,8 +173,16 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
     if (!state.importData) return;
     showNotification('正在导入数据，请稍候...', 'info');
     try {
+      let imageBlobs = [];
+      if (state.importData.productImages && state.importData.productImages.length > 0) {
+        const imagePromises = state.importData.productImages.map(async (img) => ({
+          productId: img.productId,
+          imageData: await dataUrlToBlob(img.imageDataUrl),
+        }));
+        imageBlobs = await Promise.all(imagePromises);
+      }
+
       await db.transaction('rw', db.products, db.orders, db.paymentChannels, db.productImages, async () => {
-        // Clear all tables
         await Promise.all([
           db.products.clear(),
           db.orders.clear(),
@@ -182,23 +190,17 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
           db.productImages.clear(),
         ]);
 
-        // Import images if they exist
-        if (state.importData.productImages && state.importData.productImages.length > 0) {
-          const imagePromises = state.importData.productImages.map(async (img) => ({
-            productId: img.productId,
-            imageData: await dataUrlToBlob(img.imageDataUrl),
-          }));
-          const imageBlobs = await Promise.all(imagePromises);
+        if (imageBlobs.length > 0) {
           await db.productImages.bulkAdd(imageBlobs);
         }
-
-        // Import other data
+        
         await Promise.all([
           db.products.bulkAdd(state.importData.products || []),
           db.orders.bulkAdd(state.importData.orders || []),
           db.paymentChannels.bulkAdd(state.importData.paymentChannels || []),
         ]);
       });
+
       dispatch({ type: 'CLOSE_DIALOG' });
       showNotification('数据导入成功，应用将刷新', 'success');
       setTimeout(() => window.location.reload(), 1500);
