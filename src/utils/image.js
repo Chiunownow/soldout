@@ -47,3 +47,17 @@ export const processImage = (file) => {
     };
   });
 };
+
+export const blobToDataUrl = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+export const dataUrlToBlob = async (dataUrl) => {
+  const res = await fetch(dataUrl);
+  return await res.blob();
+};

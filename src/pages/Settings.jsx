@@ -1,11 +1,4 @@
-import React, { useReducer, useCallback } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Chip } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import { useNotification } from '../NotificationContext';
-import useLongPress from '../useLongPress';
+import { blobToDataUrl, dataUrlToBlob } from '../utils/image';
 import PageHeader from '../components/PageHeader';
 import AddChannelDialog from '../components/settings/AddChannelDialog';
 import ImportConfirmDialog from '../components/settings/ImportConfirmDialog';
@@ -108,12 +101,27 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
   const handleExportJson = useCallback(async () => {
     showNotification('正在导出备份...', 'info');
     try {
+      const products = await db.products.toArray();
+      const orders = await db.orders.toArray();
+      const channels = await db.paymentChannels.toArray();
+      const images = await db.productImages.toArray();
+
+      const imagePromises = images.map(image =>
+        blobToDataUrl(image.imageData).then(dataUrl => ({
+          productId: image.productId,
+          imageDataUrl: dataUrl,
+        }))
+      );
+      const serializableImages = await Promise.all(imagePromises);
+      
       const backupData = {
-        products: await db.products.toArray(),
-        orders: await db.orders.toArray(),
-        paymentChannels: await db.paymentChannels.toArray(),
-        __soldout_backup_version__: '1.0',
+        products,
+        orders,
+        paymentChannels: channels,
+        productImages: serializableImages,
+        __soldout_backup_version__: '1.1', // Bump version for image support
       };
+
       const jsonString = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const href = URL.createObjectURL(blob);
@@ -157,8 +165,26 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
     if (!state.importData) return;
     showNotification('正在导入数据，请稍候...', 'info');
     try {
-      await db.transaction('rw', db.products, db.orders, db.paymentChannels, async () => {
-        await Promise.all([db.products.clear(), db.orders.clear(), db.paymentChannels.clear()]);
+      await db.transaction('rw', db.products, db.orders, db.paymentChannels, db.productImages, async () => {
+        // Clear all tables
+        await Promise.all([
+          db.products.clear(),
+          db.orders.clear(),
+          db.paymentChannels.clear(),
+          db.productImages.clear(),
+        ]);
+
+        // Import images if they exist
+        if (state.importData.productImages && state.importData.productImages.length > 0) {
+          const imagePromises = state.importData.productImages.map(async (img) => ({
+            productId: img.productId,
+            imageData: await dataUrlToBlob(img.imageDataUrl),
+          }));
+          const imageBlobs = await Promise.all(imagePromises);
+          await db.productImages.bulkAdd(imageBlobs);
+        }
+
+        // Import other data
         await Promise.all([
           db.products.bulkAdd(state.importData.products || []),
           db.orders.bulkAdd(state.importData.orders || []),
