@@ -5,26 +5,25 @@ import { List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Fab,
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddProductModal from './AddProductModal';
 import { useNotification } from '../NotificationContext';
-import EditProductModal from './EditProductModal';
+import ProductModal from './ProductModal';
 import PageHeader from '../components/PageHeader';
 
 const Inventory = () => {
   const { showNotification } = useNotification();
-  const products = useLiveQuery(() => db.products.toArray(), []);
+  const products = useLiveQuery(() => db.products.orderBy('createdAt').reverse().toArray(), []);
   
-  const [addModalVisible, setAddModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
   const handleAddProduct = () => {
-    setAddModalVisible(true);
+    setEditingProduct(null);
+    setModalOpen(true);
   };
 
   const handleEdit = (product) => {
     setEditingProduct(product);
-    setEditModalVisible(true);
+    setModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -36,6 +35,11 @@ const Inventory = () => {
       showNotification('删除失败', 'error');
     }
   };
+  
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingProduct(null);
+  }
 
   return (
     <>
@@ -110,18 +114,10 @@ const Inventory = () => {
         <AddIcon />
       </Fab>
       
-      <AddProductModal 
-        open={addModalVisible} 
-        onClose={() => setAddModalVisible(false)} 
-      />
-      
-      <EditProductModal
-        key={editingProduct ? editingProduct.id : 'edit-modal'} // Add key prop to force re-mount
-        open={editModalVisible}
-        onClose={() => {
-          setEditModalVisible(false);
-          setEditingProduct(null);
-        }}
+      <ProductModal
+        key={editingProduct ? editingProduct.id : 'add-new-product'}
+        open={modalOpen}
+        onClose={handleCloseModal}
         product={editingProduct}
       />
     </>

@@ -7,10 +7,11 @@ import { useNotification } from '../NotificationContext';
 
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
 
-const AddProductModal = ({ open, onClose }) => {
+const ProductModal = ({ open, onClose, product }) => {
   const { showNotification } = useNotification();
-  
-  const [step, setStep] = useState(0); // 0: Basic Info, 1: Define Attributes, 2: Set Stock
+  const isEditMode = !!product;
+
+  const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -25,16 +26,34 @@ const AddProductModal = ({ open, onClose }) => {
 
   useEffect(() => {
     if (open) {
-      setStep(0);
-      setName('');
-      setPrice('');
-      setDescription('');
-      setStock('');
-      setAttributes([]);
-      setVariants([]);
-      setShowAttributes(false);
+      if (isEditMode) {
+        setName(product.name || '');
+        setPrice(product.price ? String(product.price) : '');
+        setDescription(product.description || '');
+        const productAttributes = product.attributes || [];
+        setAttributes(productAttributes);
+        const productVariants = (product.variants || []).map(v => ({ ...v, stock: String(v.stock) }));
+        setVariants(productVariants);
+        const hasAttributes = productAttributes.length > 0;
+        setShowAttributes(hasAttributes);
+        if (!hasAttributes) {
+            setStock(product.stock ? String(product.stock) : '');
+        } else {
+            setStock('');
+        }
+        setStep(0);
+      } else {
+        setStep(0);
+        setName('');
+        setPrice('');
+        setDescription('');
+        setStock('');
+        setAttributes([]);
+        setVariants([]);
+        setShowAttributes(false);
+      }
     }
-  }, [open]);
+  }, [open, product, isEditMode]);
   
   const handleClose = () => {
     setStep(0);
@@ -44,16 +63,14 @@ const AddProductModal = ({ open, onClose }) => {
 
   const handleAttributeChange = (index, field, value) => {
     const newAttributes = [...attributes];
-    newAttributes[index][field] = value; // Update the field with the new value
+    newAttributes[index][field] = value;
 
-    if (field === 'key') { // If the key (attribute name) is being changed
-      if (predefinedAttributeValues[value]) { // Check if the new key has a predefined value
-        newAttributes[index].value = predefinedAttributeValues[value]; // Auto-fill
-      } else if (value && !predefinedAttributeValues[value]) { // If a custom key is typed, don't clear value unless value already matches a predefined one
-          // No-op for custom keys to preserve existing custom value, unless it was a predefined value
-          // that now no longer matches. For simplicity, just clear if not predefined.
-          newAttributes[index].value = ''; // Clear the value if the key is not predefined
-      } else if (!value) { // If key is cleared
+    if (field === 'key') {
+      if (predefinedAttributeValues[value]) {
+        newAttributes[index].value = predefinedAttributeValues[value];
+      } else if (value && !predefinedAttributeValues[value]) {
+          newAttributes[index].value = '';
+      } else if (!value) {
           newAttributes[index].value = '';
       }
     }
@@ -110,12 +127,6 @@ const AddProductModal = ({ open, onClose }) => {
             showNotification('请填写产品名称和价格', 'warning');
             return;
         }
-        const trimmedName = name.trim();
-        const existingProduct = await db.products.where('name').equalsIgnoreCase(trimmedName).first();
-        if (existingProduct) {
-            showNotification('已存在同名商品', 'error');
-            return;
-        }
         if (attributes.length === 0) setAttributes([{ key: '', value: '' }]);
         setStep(1);
     }
@@ -127,23 +138,52 @@ const AddProductModal = ({ open, onClose }) => {
   const handleBack = () => setStep(s => s - 1);
 
   const handleSubmit = async () => {
+    if (!name.trim() || !price) {
+        showNotification('请填写产品名称和价格', 'warning');
+        return;
+    }
+
+    const trimmedName = name.trim();
+    const existingProduct = await db.products.where('name').equalsIgnoreCase(trimmedName).first();
+    if (existingProduct && (!isEditMode || existingProduct.id !== product.id)) {
+        showNotification('已存在同名商品', 'error');
+        return;
+    }
+    
+    if (showAttributes && variants.length === 0) {
+      // In edit mode, variants might be populated from props, but if attributes are modified, variants should be regenerated.
+      // This logic is simplified; we assume if attributes are shown, variants should have been generated or already exist.
+      // A more complex check might be needed if we allow editing attributes without regenerating variants.
+      const validAttributes = attributes.filter(attr => attr.key && attr.value);
+      if (validAttributes.length > 0) {
+        showNotification('请生成或重新生成子属性规格', 'warning');
+        return;
+      }
+    }
+
     const finalStock = parseInt(stock, 10) || 0;
     try {
       const productData = {
-        name: name.trim(),
+        name: trimmedName,
         price: parseFloat(price),
         description,
         attributes: showAttributes ? attributes.filter(attr => attr.key && attr.value) : [],
         variants: showAttributes ? variants.map(v => ({ ...v, stock: parseInt(v.stock, 10) || 0 })) : [],
         stock: showAttributes ? totalStock : finalStock,
-        createdAt: new Date(),
       };
-      await db.products.add(productData);
-      showNotification('产品添加成功', 'success');
+
+      if (isEditMode) {
+        await db.products.update(product.id, productData);
+        showNotification('产品更新成功', 'success');
+      } else {
+        productData.createdAt = new Date();
+        await db.products.add(productData);
+        showNotification('产品添加成功', 'success');
+      }
       handleClose();
     } catch (error) {
-      console.error('Failed to add product:', error);
-      showNotification(`产品添加失败: ${error.message}`, 'error');
+      console.error('Failed to save product:', error);
+      showNotification(`产品保存失败: ${error.message}`, 'error');
     }
   };
 
@@ -188,7 +228,7 @@ const AddProductModal = ({ open, onClose }) => {
                         border: '1px solid #eee', 
                         borderRadius: 1, 
                         mb: 2, 
-                        position: 'relative' // For absolute positioning of IconButton
+                        position: 'relative'
                     }}>
                         <Autocomplete 
                             freeSolo 
@@ -216,7 +256,6 @@ const AddProductModal = ({ open, onClose }) => {
                         >
                             <RemoveCircleOutlineIcon />
                         </IconButton>
-
                     </Box>
                 ))}
                 <Button onClick={addAttributeField} startIcon={<AddCircleOutlineIcon />} variant="outlined" size="small">添加另一属性</Button>
@@ -240,7 +279,7 @@ const AddProductModal = ({ open, onClose }) => {
   
   const renderActions = () => {
     if (!showAttributes) {
-        return <><Button onClick={handleClose}>取消</Button><Button onClick={handleSubmit} variant="contained">提交</Button></>;
+        return <><Button onClick={handleClose}>取消</Button><Button onClick={handleSubmit} variant="contained">{isEditMode ? '保存' : '提交'}</Button></>;
     }
     return <>
         <Button onClick={handleClose}>取消</Button>
@@ -248,14 +287,14 @@ const AddProductModal = ({ open, onClose }) => {
         {step > 0 && <Button onClick={handleBack}>上一步</Button>}
         {step < stepperSteps.length - 1 
             ? <Button onClick={handleNext} variant="contained">下一步</Button> 
-            : <Button onClick={handleSubmit} variant="contained">提交</Button>
+            : <Button onClick={handleSubmit} variant="contained">{isEditMode ? '保存' : '提交'}</Button>
         }
     </>;
   }
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>添加新产品</DialogTitle>
+      <DialogTitle>{isEditMode ? '编辑产品' : '添加新产品'}</DialogTitle>
       <DialogContent>
         {showAttributes && (
             <Stepper activeStep={step} sx={{ pt: 3, pb: 5 }}>
@@ -286,7 +325,7 @@ const AddProductModal = ({ open, onClose }) => {
                   if (!e.target.checked) setStep(0);
                   else setStock('');
               }} />}
-              label="添加子属性 (多规格)"
+              label={isEditMode ? '编辑子属性 (多规格)' : '添加子属性 (多规格)'}
             />
         </Box>
       </DialogContent>
@@ -297,4 +336,4 @@ const AddProductModal = ({ open, onClose }) => {
   );
 };
 
-export default AddProductModal;
+export default ProductModal;
