@@ -55,7 +55,7 @@ export const CartProvider = ({ children }) => {
         productId: product.id,
         name: product.name,
         price: product.price,
-        description: product.description,
+        // description: product.description, // Description is disabled
         quantity: 1,
         isGift: false,
         variantName: variant ? variant.name : null,
@@ -63,7 +63,10 @@ export const CartProvider = ({ children }) => {
     }
     setCart(newCart);
     saveCartToDb(newCart);
-  }, [cart, saveCartToDb]);
+
+    const variantText = variant ? ` ${variant.name}` : '';
+    showNotification(`${product.name}${variantText} 已添加到购物车`, 'success');
+  }, [cart, saveCartToDb, showNotification]);
 
   const handleQuantityChange = useCallback((cartItemId, quantity) => {
     let newCart;
