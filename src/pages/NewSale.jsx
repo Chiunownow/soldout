@@ -54,20 +54,22 @@ const NewSale = () => {
       <PageHeader title="记账" />
       
       {categories && categories.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 1, p: 2, overflowX: 'auto', flexWrap: 'nowrap' }}>
-          <Chip
-            label="所有商品"
-            variant={selectedCategoryId === 'all' ? 'filled' : 'outlined'}
-            onClick={() => setSelectedCategoryId('all')}
-          />
-          {categories.map(cat => (
+        <Box sx={{ p: 1, overflowX: 'auto', flexWrap: 'nowrap' }}> {/* Outer box for scrolling and padding */}
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', minWidth: 'max-content' }}> {/* Inner box for centering */}
             <Chip
-              key={cat.id}
-              label={cat.name}
-              variant={selectedCategoryId === cat.id ? 'filled' : 'outlined'}
-              onClick={() => setSelectedCategoryId(cat.id)}
+              label="所有商品"
+              variant={selectedCategoryId === 'all' ? 'filled' : 'outlined'}
+              onClick={() => setSelectedCategoryId('all')}
             />
-          ))}
+            {categories.map(cat => (
+              <Chip
+                key={cat.id}
+                label={cat.name}
+                variant={selectedCategoryId === cat.id ? 'filled' : 'outlined'}
+                onClick={() => setSelectedCategoryId(cat.id)}
+              />
+            ))}
+          </Box>
         </Box>
       )}
 

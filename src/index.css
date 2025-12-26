@@ -1,0 +1,15 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Prevent scrolling on the body */
+  overflow: hidden;
+}
+
+body {
+  /* Use a more robust box-sizing model */
+  box-sizing: border-box;
+}
+*, *::before, *::after {
+  box-sizing: inherit;
+}
