@@ -15,6 +15,11 @@ vi.mock('../db', () => ({
       equalsIgnoreCase: vi.fn().mockReturnThis(),
       first: vi.fn().mockResolvedValue(null),
     },
+    productImages: {
+      get: vi.fn().mockResolvedValue(null),
+      put: vi.fn(),
+      delete: vi.fn(),
+    }
   },
 }));
 
@@ -87,18 +92,25 @@ describe('ProductModal', () => {
 
   // Test Suite for "Edit Mode"
   describe('in Edit Mode', () => {
-    it('renders correctly with pre-filled product data', () => {
+    it('renders correctly with pre-filled product data', async () => {
       renderWithProvider(<ProductModal open={true} onClose={handleClose} product={mockProduct} />);
-      expect(screen.getByText('编辑产品')).toBeInTheDocument();
-      expect(screen.getByLabelText('产品名称')).toHaveValue(mockProduct.name);
-      expect(screen.getByLabelText('销售价格')).toHaveValue(mockProduct.price);
-      expect(screen.getByLabelText('初始库存')).toHaveValue(mockProduct.stock);
-      expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('编辑产品')).toBeInTheDocument();
+        expect(screen.getByLabelText('产品名称')).toHaveValue(mockProduct.name);
+        expect(screen.getByLabelText('销售价格')).toHaveValue(mockProduct.price);
+        expect(screen.getByLabelText('初始库存')).toHaveValue(mockProduct.stock);
+        expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument();
+      });
     });
 
     it('submits updated product data correctly', async () => {
       renderWithProvider(<ProductModal open={true} onClose={handleClose} product={mockProduct} />);
       const newName = 'Updated Product Name';
+      
+      await waitFor(() => {
+        expect(screen.getByLabelText('产品名称')).toHaveValue(mockProduct.name);
+      });
+
       fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: newName } });
       fireEvent.click(screen.getByRole('button', { name: '保存' }));
 
@@ -115,6 +127,10 @@ describe('ProductModal', () => {
         db.products.where().equalsIgnoreCase().first.mockResolvedValue({ id: 999, name: 'Another Product' });
   
         renderWithProvider(<ProductModal open={true} onClose={handleClose} product={mockProduct} />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('产品名称')).toHaveValue(mockProduct.name);
+        });
   
         fireEvent.change(screen.getByLabelText('产品名称'), { target: { value: 'Another Product' } });
         fireEvent.click(screen.getByRole('button', { name: '保存' }));
@@ -130,6 +146,10 @@ describe('ProductModal', () => {
         db.products.where().equalsIgnoreCase().first.mockResolvedValue(mockProduct);
 
         renderWithProvider(<ProductModal open={true} onClose={handleClose} product={mockProduct} />);
+        
+        await waitFor(() => {
+            expect(screen.getByLabelText('产品名称')).toHaveValue(mockProduct.name);
+        });
         
         fireEvent.change(screen.getByLabelText('销售价格'), { target: { value: '110' } });
         fireEvent.click(screen.getByRole('button', { name: '保存' }));

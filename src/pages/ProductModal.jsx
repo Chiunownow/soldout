@@ -7,6 +7,8 @@ import { useNotification } from '../NotificationContext';
 import { processImage } from '../utils/image';
 
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
+
+const initialState = {
   step: 0,
   name: '',
   price: '',
