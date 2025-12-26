@@ -13,6 +13,7 @@ import Stats from './pages/Stats'
 import Settings from './pages/Settings'
 import WelcomeDialog from './components/WelcomeDialog';
 import DevImageViewer from './pages/DevImageViewer';
+import DevDbViewer from './pages/DevDbViewer';
 import { db } from './db'
 
 const App = () => {
@@ -94,6 +95,7 @@ const App = () => {
           onLayoutChange={handleLayoutChange}
         />;
       case 'dev': return isDevMode ? <DevImageViewer /> : <Sale />;
+      case 'dev-db': return isDevMode ? <DevDbViewer /> : <Sale />;
       default: return <Sale />;
     }
   }

@@ -305,9 +305,14 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey, 
           <Card sx={{ mt: 2 }}>
             <CardContent>
                 <Typography variant="h6" gutterBottom>开发者选项</Typography>
-                <Button fullWidth variant="outlined" onClick={() => setActiveKey('dev')}>
-                  浏览已上传的图片
-                </Button>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Button fullWidth variant="outlined" onClick={() => setActiveKey('dev')}>
+                    浏览已上传的图片
+                  </Button>
+                  <Button fullWidth variant="outlined" onClick={() => setActiveKey('dev-db')}>
+                    查看 IndexedDB 状态
+                  </Button>
+                </Box>
             </CardContent>
           </Card>
         )}
