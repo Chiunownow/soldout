@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 
-const PaymentPickerDialog = ({ open, onClose, channels, onSelectChannel }) => {
-  const handleSelect = (channelId) => {
+const PaymentPickerDialog = React.memo(({ open, onClose, channels, onSelectChannel }) => {
+  const handleSelect = useCallback((channelId) => {
     onSelectChannel(channelId);
     onClose();
-  };
+  }, [onSelectChannel, onClose]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -21,6 +21,6 @@ const PaymentPickerDialog = ({ open, onClose, channels, onSelectChannel }) => {
       </List>
     </Dialog>
   );
-};
+});
 
 export default PaymentPickerDialog;

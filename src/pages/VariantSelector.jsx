@@ -1,15 +1,17 @@
-import React from 'react';
-import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText, Typography, Box } from '@mui/material';
+import React, { useCallback } from 'react';
+import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
 
-const VariantSelector = ({ open, product, onSelect, onClose }) => {
+const VariantSelector = React.memo(({ open, product, onSelect, onClose }) => {
+  const handleVariantSelect = useCallback((variant) => {
+    if (product) {
+      onSelect(product, variant);
+    }
+    onClose();
+  }, [product, onSelect, onClose]);
+
   if (!product) {
     return null;
   }
-
-  const handleVariantSelect = (variant) => {
-    onSelect(product, variant);
-    onClose();
-  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -40,6 +42,6 @@ const VariantSelector = ({ open, product, onSelect, onClose }) => {
       </List>
     </Dialog>
   );
-};
+});
 
 export default VariantSelector;

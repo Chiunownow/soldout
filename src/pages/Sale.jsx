@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
+import { useCart } from '../CartContext';
 import { Box, Typography, Button, List, ListItem, ListItemText, IconButton } from '@mui/material';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -8,10 +9,11 @@ import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import ProductPickerDialog from './ProductPickerDialog';
 import PaymentPickerDialog from './PaymentPickerDialog';
 import VariantSelector from './VariantSelector';
-
 import PageHeader from '../components/PageHeader';
 
-const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onClearCart, onCheckout }) => {
+const Sale = () => {
+  const { cart, handleAddToCart, handleQuantityChange, handleGiftToggle, handleClearCart, handleCheckout } = useCart();
+  const products = useLiveQuery(() => db.products.toArray(), []);
   const paymentChannels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   
   const [productPickerVisible, setProductPickerVisible] = useState(false);
@@ -27,12 +29,12 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
       setProductForVariantSelection(product);
       setVariantSelectorVisible(true);
     } else {
-      onAddToCart(product, null);
+      handleAddToCart(product, null);
     }
   };
 
   const handleVariantSelect = (product, variant) => {
-    onAddToCart(product, variant);
+    handleAddToCart(product, variant);
   };
 
   const calculateTotal = () => {
@@ -64,7 +66,7 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {cart.length > 0 && (
-            <Button size="small" onClick={onClearCart} variant="outlined">
+            <Button size="small" onClick={handleClearCart} variant="outlined">
               清空
             </Button>
           )}
@@ -102,12 +104,12 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
                   secondaryAction={
                     <CustomStepper
                       value={item.quantity}
-                      onChange={onQuantityChange}
+                      onChange={handleQuantityChange}
                       cartItemId={item.cartItemId}
                     />
                   }
                 >
-                  <IconButton onClick={() => onGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
+                  <IconButton onClick={() => handleGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
                       <Typography variant="caption" color={item.isGift ? 'primary' : 'text.disabled'} sx={{ mt: -0.5 }}>
@@ -178,7 +180,7 @@ const Sale = ({ cart, products, onAddToCart, onQuantityChange, onGiftToggle, onC
         open={paymentPickerVisible}
         onClose={() => setPaymentPickerVisible(false)}
         channels={paymentChannels}
-        onSelectChannel={onCheckout}
+        onSelectChannel={handleCheckout}
       />
     </>
   );

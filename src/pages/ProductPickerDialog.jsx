@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Dialog, DialogTitle, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
 
-const ProductPickerDialog = ({ open, onClose, products, onSelectProduct }) => {
-  const handleSelect = (productId) => {
+const ProductPickerDialog = React.memo(({ open, onClose, products, onSelectProduct }) => {
+  const handleSelect = useCallback((productId) => {
     onSelectProduct(productId);
     onClose();
-  };
+  }, [onSelectProduct, onClose]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
@@ -36,6 +36,6 @@ const ProductPickerDialog = ({ open, onClose, products, onSelectProduct }) => {
       </List>
     </Dialog>
   );
-};
+});
 
 export default ProductPickerDialog;

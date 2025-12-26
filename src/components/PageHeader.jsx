@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 
-const PageHeader = ({ title }) => {
+const PageHeader = React.memo(({ title }) => {
   return (
     <Box sx={{
       padding: '16px',
@@ -20,6 +20,6 @@ const PageHeader = ({ title }) => {
       <img src="/favicon.svg" alt="App Favicon" style={{ height: '32px', width: '32px', marginLeft: '16px' }} />
     </Box>
   );
-};
+});
 
 export default PageHeader;

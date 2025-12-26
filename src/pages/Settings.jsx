@@ -1,44 +1,58 @@
-import React, { useState } from 'react';
+import React, { useReducer, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Chip, DialogContentText } from '@mui/material';
+import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Chip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { useNotification } from '../NotificationContext';
 import useLongPress from '../useLongPress';
 import PageHeader from '../components/PageHeader';
+import AddChannelDialog from '../components/settings/AddChannelDialog';
+import ImportConfirmDialog from '../components/settings/ImportConfirmDialog';
+import ClearDataDialogs from '../components/settings/ClearDataDialogs';
+
+const initialState = {
+  activeDialog: null, // 'addChannel', 'importConfirm', 'clearData'
+  importData: null,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'OPEN_DIALOG':
+      return { ...state, activeDialog: action.payload };
+    case 'CLOSE_DIALOG':
+      return { ...state, activeDialog: null, importData: null };
+    case 'SET_IMPORT_DATA':
+      return { ...state, importData: action.payload };
+    default:
+      return state;
+  }
+}
 
 const Settings = ({ showInstallButton, onInstallClick }) => {
   const { showNotification } = useNotification();
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
-  const [addChannelOpen, setAddChannelOpen] = useState(false);
-  const [newChannelName, setNewChannelName] = useState('');
-  const [firstClearConfirmOpen, setFirstClearConfirmOpen] = useState(false);
-  const [secondClearConfirmOpen, setSecondClearConfirmOpen] = useState(false);
-  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
-  const [importData, setImportData] = useState(null);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const longPressEvents = useLongPress(() => {
-    setFirstClearConfirmOpen(true);
-  }, () => {
-    showNotification('需要长按才能清空数据', 'info');
-  });
+  const longPressEvents = useLongPress(
+    () => dispatch({ type: 'OPEN_DIALOG', payload: 'clearData' }),
+    () => showNotification('需要长按才能清空数据', 'info')
+  );
 
-  const handleAddChannel = async () => {
+  const handleAddChannel = useCallback(async (newChannelName) => {
     if (newChannelName.trim()) {
       try {
         await db.paymentChannels.add({ name: newChannelName.trim(), isSystemChannel: false });
         showNotification('添加成功', 'success');
-        setNewChannelName('');
-        setAddChannelOpen(false);
+        dispatch({ type: 'CLOSE_DIALOG' });
       } catch (error) {
         console.error('Failed to add channel:', error);
         showNotification('添加失败', 'error');
       }
     }
-  };
+  }, [showNotification]);
 
-  const handleDeleteChannel = async (id) => {
+  const handleDeleteChannel = useCallback(async (id) => {
     try {
       await db.paymentChannels.delete(id);
       showNotification('删除成功', 'success');
@@ -46,9 +60,9 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
       console.error('Failed to delete channel:', error);
       showNotification('删除失败', 'error');
     }
-  };
+  }, [showNotification]);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     showNotification('正在导出...', 'info');
     try {
       const allOrders = await db.orders.orderBy('createdAt').toArray();
@@ -89,22 +103,17 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
       console.error('Failed to export data:', error);
       showNotification('导出失败', 'error');
     }
-  };
+  }, [showNotification]);
 
-  const handleExportJson = async () => {
+  const handleExportJson = useCallback(async () => {
     showNotification('正在导出备份...', 'info');
     try {
-      const products = await db.products.toArray();
-      const orders = await db.orders.toArray();
-      const channels = await db.paymentChannels.toArray();
-      
       const backupData = {
-        products,
-        orders,
-        paymentChannels: channels,
-        __soldout_backup_version__: '1.0', 
+        products: await db.products.toArray(),
+        orders: await db.orders.toArray(),
+        paymentChannels: await db.paymentChannels.toArray(),
+        __soldout_backup_version__: '1.0',
       };
-
       const jsonString = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonString], { type: 'application/json' });
       const href = URL.createObjectURL(blob);
@@ -116,85 +125,65 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
       document.body.removeChild(link);
       URL.revokeObjectURL(href);
       showNotification('备份文件已导出', 'success');
-
     } catch (error) {
       console.error('Failed to export JSON data:', error);
       showNotification('导出失败', 'error');
     }
-  };
+  }, [showNotification]);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = useCallback((event) => {
     const file = event.target.files[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (data && data.products && data.orders && data.paymentChannels && data.__soldout_backup_version__) {
-          setImportData(data);
-          setImportConfirmOpen(true);
+        if (data?.__soldout_backup_version__) {
+          dispatch({ type: 'SET_IMPORT_DATA', payload: data });
+          dispatch({ type: 'OPEN_DIALOG', payload: 'importConfirm' });
         } else {
           showNotification('文件格式无效或已损坏', 'error');
         }
       } catch (error) {
-        console.error('Failed to parse import file:', error);
         showNotification('无法解析文件', 'error');
       }
     };
     reader.readAsText(file);
     event.target.value = null;
-  };
+  }, [showNotification]);
 
-  const handleConfirmImport = async () => {
-    if (!importData) return;
-
+  const handleConfirmImport = useCallback(async () => {
+    if (!state.importData) return;
     showNotification('正在导入数据，请稍候...', 'info');
     try {
       await db.transaction('rw', db.products, db.orders, db.paymentChannels, async () => {
+        await Promise.all([db.products.clear(), db.orders.clear(), db.paymentChannels.clear()]);
         await Promise.all([
-          db.products.clear(),
-          db.orders.clear(),
-          db.paymentChannels.clear(),
-        ]);
-        await Promise.all([
-          db.products.bulkAdd(importData.products),
-          db.orders.bulkAdd(importData.orders),
-          db.paymentChannels.bulkAdd(importData.paymentChannels),
+          db.products.bulkAdd(state.importData.products || []),
+          db.orders.bulkAdd(state.importData.orders || []),
+          db.paymentChannels.bulkAdd(state.importData.paymentChannels || []),
         ]);
       });
-      
-      setImportConfirmOpen(false);
-      setImportData(null);
+      dispatch({ type: 'CLOSE_DIALOG' });
       showNotification('数据导入成功，应用将刷新', 'success');
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-      console.error('Failed to import data:', error);
       showNotification(`导入失败: ${error.message}`, 'error');
-      setImportConfirmOpen(false);
-      setImportData(null);
+      dispatch({ type: 'CLOSE_DIALOG' });
     }
-  };
+  }, [state.importData, showNotification]);
 
-  const handleClearAllData = async () => {
+  const handleClearAllData = useCallback(async () => {
     try {
-        setSecondClearConfirmOpen(false);
-        await db.delete();
-        localStorage.removeItem('hasSeenWelcome'); 
-        showNotification('所有数据已清除，应用将刷新', 'success');
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+      await db.delete();
+      localStorage.removeItem('hasSeenWelcome');
+      showNotification('所有数据已清除，应用将刷新', 'success');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
-        console.error('Failed to delete database:', error);
-        showNotification('清除数据失败', 'error');
+      showNotification('清除数据失败', 'error');
     }
-  };
+  }, [showNotification]);
 
   return (
     <>
@@ -204,12 +193,8 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>安装应用</Typography>
-              <Button fullWidth variant="contained" onClick={onInstallClick}>
-                添加到主屏幕
-              </Button>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                将此应用安装到您的设备主屏幕，以便快速访问和离线使用。
-              </Typography>
+              <Button fullWidth variant="contained" onClick={onInstallClick}>添加到主屏幕</Button>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>将此应用安装到您的设备主屏幕，以便快速访问和离线使用。</Typography>
             </CardContent>
           </Card>
         )}
@@ -217,32 +202,21 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
           <CardContent>
             <Typography variant="h6" gutterBottom>支付渠道管理</Typography>
             <List>
-              {channels && channels.map(channel => (
-                <ListItem
-                  key={channel.id}
-                  secondaryAction={
-                    !channel.isSystemChannel && (
-                      <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    )
-                  }
-                >
+              {(channels || []).map(channel => (
+                <ListItem key={channel.id} secondaryAction={!channel.isSystemChannel && (<IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}><DeleteIcon /></IconButton>)}>
                   <ListItemText primary={channel.name} />
                   {channel.isSystemChannel && <Chip label="系统" size="small" />}
                 </ListItem>
               ))}
             </List>
-            <Button fullWidth variant="outlined" onClick={() => setAddChannelOpen(true)} sx={{ mt: 2 }}>
-              添加新渠道
-            </Button>
+            <Button fullWidth variant="outlined" onClick={() => dispatch({ type: 'OPEN_DIALOG', payload: 'addChannel' })} sx={{ mt: 2 }}>添加新渠道</Button>
           </CardContent>
         </Card>
 
         <Card sx={{ mt: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>数据管理</Typography>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
               <Button fullWidth variant="contained" onClick={handleExport}>
                 导出订单表格 (CSV)
               </Button>
@@ -254,110 +228,32 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
               导入备份数据 (JSON)
               <input type="file" hidden accept=".json" onChange={handleFileChange} />
             </Button>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              “导出备份”会生成一个包含所有产品、订单和设置的完整备份文件。“导入备份”会覆盖当前所有数据。
-            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>“导出备份”会生成一个包含所有产品、订单和设置的完整备份文件。“导入备份”会覆盖当前所有数据。</Typography>
           </CardContent>
         </Card>
 
         <Card sx={{ mt: 2 }}>
           <CardContent>
               <Typography variant="h6" color="error" gutterBottom>危险区域</Typography>
-              <Button fullWidth variant="contained" color="error" {...longPressEvents}>
-                  长按清空所有数据
-              </Button>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                此操作将删除本浏览器内所有产品、订单和设置，且无法恢复。
-              </Typography>
+              <Button fullWidth variant="contained" color="error" {...longPressEvents}>长按清空所有数据</Button>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>此操作将删除本浏览器内所有产品、订单和设置，且无法恢复。</Typography>
           </CardContent>
         </Card>
 
         <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
           <Typography variant="h6">
             售罄 Sold Out
-            <IconButton
-              aria-label="GitHub repository"
-              onClick={() => window.open('https://github.com/Chiunownow/soldout', '_blank')}
-              color="inherit"
-              sx={{ ml: 1, verticalAlign: 'middle' }}
-            >
+            <IconButton aria-label="GitHub repository" onClick={() => window.open('https://github.com/Chiunownow/soldout', '_blank')} color="inherit" sx={{ ml: 1, verticalAlign: 'middle' }}>
               <GitHubIcon fontSize="small" />
             </IconButton>
           </Typography>
-          <Typography variant="caption">
-            Version: {import.meta.env.VITE_APP_VERSION || 'dev'}
-          </Typography>
+          <Typography variant="caption">Version: {import.meta.env.VITE_APP_VERSION || 'dev'}</Typography>
         </Box>
       </Box>
       
-      {/* Add Channel Dialog */}
-      <Dialog open={addChannelOpen} onClose={() => setAddChannelOpen(false)}>
-        <DialogTitle>添加新支付渠道</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="渠道名称"
-            type="text"
-            fullWidth
-            variant="standard"
-            value={newChannelName}
-            onChange={(e) => setNewChannelName(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddChannelOpen(false)}>取消</Button>
-          <Button onClick={handleAddChannel}>添加</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Import Confirmation Dialog */}
-      <Dialog open={importConfirmOpen} onClose={() => setImportConfirmOpen(false)}>
-        <DialogTitle>确认导入数据</DialogTitle>
-        <DialogContent>
-            <DialogContentText>
-                您确定要导入备份数据吗？这将 **覆盖** 当前应用中的所有产品、订单和设置。此操作无法撤销。
-            </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setImportConfirmOpen(false)}>取消</Button>
-          <Button onClick={handleConfirmImport} color="warning">
-            确认导入
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* First Clear Confirmation */}
-      <Dialog open={firstClearConfirmOpen} onClose={() => setFirstClearConfirmOpen(false)}>
-        <DialogTitle>确认操作</DialogTitle>
-        <DialogContent>
-            <DialogContentText>
-                您确定要清空所有数据吗？此操作包括所有产品、订单和设置，且无法撤销。
-            </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFirstClearConfirmOpen(false)}>取消</Button>
-          <Button onClick={() => { setFirstClearConfirmOpen(false); setSecondClearConfirmOpen(true); }} color="error">
-            我确定
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Second Clear Confirmation */}
-      <Dialog open={secondClearConfirmOpen} onClose={() => setSecondClearConfirmOpen(false)}>
-        <DialogTitle>最后确认！</DialogTitle>
-        <DialogContent>
-            <DialogContentText>
-                这是最后一次确认。点击下方按钮将 **立即永久删除** 所有应用数据。
-            </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSecondClearConfirmOpen(false)}>我再想想</Button>
-          <Button onClick={handleClearAllData} variant="contained" color="error">
-            删除所有数据
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AddChannelDialog open={state.activeDialog === 'addChannel'} onClose={() => dispatch({ type: 'CLOSE_DIALOG' })} onAdd={handleAddChannel} />
+      <ImportConfirmDialog open={state.activeDialog === 'importConfirm'} onClose={() => dispatch({ type: 'CLOSE_DIALOG' })} onConfirm={handleConfirmImport} />
+      <ClearDataDialogs open={state.activeDialog === 'clearData'} onClose={() => dispatch({ type: 'CLOSE_DIALOG' })} onConfirm={handleClearAllData} />
     </>
   );
 };

@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, FormControlLabel, Checkbox } from '@mui/material';
-// Removed: import useLongPress from '../useLongPress'; // No longer needed
 
-const WelcomeDialog = ({ open, onConfirm }) => {
+const WelcomeDialog = React.memo(({ open, onConfirm }) => {
   const [isChecked, setIsChecked] = useState(false);
 
-  const handleCheckboxChange = (event) => {
+  const handleCheckboxChange = useCallback((event) => {
     setIsChecked(event.target.checked);
-  };
+  }, []);
 
-  const handleClickConfirm = () => {
+  const handleClickConfirm = useCallback(() => {
     if (isChecked) {
       onConfirm();
     }
-  };
+  }, [isChecked, onConfirm]);
 
   return (
     <Dialog
@@ -39,7 +38,7 @@ const WelcomeDialog = ({ open, onConfirm }) => {
       </DialogContent>
       <DialogActions>
         <Button 
-          onClick={handleClickConfirm} // Changed to onClick
+          onClick={handleClickConfirm}
           variant="contained"
           disabled={!isChecked}
         >
@@ -48,6 +47,6 @@ const WelcomeDialog = ({ open, onConfirm }) => {
       </DialogActions>
     </Dialog>
   );
-};
+});
 
 export default WelcomeDialog;
