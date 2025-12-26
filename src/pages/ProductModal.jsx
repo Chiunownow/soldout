@@ -231,6 +231,8 @@ const ProductModal = ({ open, onClose, product }) => {
       };
 
       let productId = product?.id;
+
+      // Save metadata first
       if (isEditMode) {
         await db.products.update(productId, productData);
         showNotification('产品更新成功', 'success');
@@ -240,14 +242,22 @@ const ProductModal = ({ open, onClose, product }) => {
         showNotification('产品添加成功', 'success');
       }
 
-      // Handle image saving/deleting
+      // Close modal immediately for better UX
+      handleClose();
+
+      // Then handle slow image operations in the background
       if (processedImageBlob) {
-        await db.productImages.put({ productId, imageData: processedImageBlob });
+        db.productImages.put({ productId, imageData: processedImageBlob }).catch(err => {
+          console.error('Failed to save image in background:', err);
+          showNotification('图片保存失败，请重新编辑', 'error');
+        });
       } else if (isImageRemoved && isEditMode) {
-        await db.productImages.delete(productId);
+        db.productImages.delete(productId).catch(err => {
+          console.error('Failed to delete image in background:', err);
+          // Optional: notify user of background image deletion failure
+        });
       }
 
-      handleClose();
     } catch (error) {
       console.error('Failed to save product:', error);
       showNotification(`产品保存失败: ${error.message}`, 'error');
