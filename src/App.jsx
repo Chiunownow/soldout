@@ -6,6 +6,7 @@ import AppsIcon from '@mui/icons-material/Apps';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Sale from './pages/Sale'
+import NewSale from './pages/NewSale'
 import Inventory from './pages/Inventory'
 import Orders from './pages/Orders'
 import Stats from './pages/Stats'
@@ -16,17 +17,19 @@ import { db } from './db'
 
 const App = () => {
   const [activeKey, setActiveKey] = useState('sale');
+  const [isNewHome] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('newhome') === 'true';
+  });
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
-  const [isDevMode, setIsDevMode] = useState(false);
+  const [isDevMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('devmode') === 'true';
+  });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('devmode') === 'true') {
-      setIsDevMode(true);
-    }
-
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -74,7 +77,7 @@ const App = () => {
 
   const renderContent = () => {
     switch (activeKey) {
-      case 'sale': return <Sale />;
+      case 'sale': return isNewHome ? <NewSale /> : <Sale />;
       case 'inventory': return <Inventory />;
       case 'orders': return <Orders />;
       case 'stats': return <Stats />;
@@ -93,7 +96,7 @@ const App = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       <Box sx={{ flex: 1, overflowY: 'auto' }}>
         {renderContent()}
-      </Box>
+</Box>
       <Paper sx={{ position: 'sticky', bottom: 0, left: 0, right: 0 }} elevation={3}>
         <BottomNavigation
           showLabels
