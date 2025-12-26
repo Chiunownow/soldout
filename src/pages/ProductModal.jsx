@@ -1,9 +1,4 @@
-import React, { useEffect, useMemo, useReducer, useRef, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel, Card, CardMedia } from '@mui/material';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
-import { db } from '../db';
-import { useNotification } from '../NotificationContext';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { processImage } from '../utils/image';
 
 const cartesian = (...a) => a.reduce((acc, val) => acc.flatMap(d => val.map(e => [d, e].flat())));
@@ -65,6 +60,7 @@ const ProductModal = ({ open, onClose, product }) => {
   const { showNotification } = useNotification();
   const isEditMode = !!product;
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const [state, dispatch] = useReducer(reducer, initialState);
   const { step, name, price, description, stock, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
@@ -119,6 +115,9 @@ const ProductModal = ({ open, onClose, product }) => {
   const handleFileChange = useCallback(async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    // In case the same file is selected again, reset the input value
+    event.target.value = '';
 
     const previewUrl = URL.createObjectURL(file);
     try {
@@ -253,12 +252,12 @@ const ProductModal = ({ open, onClose, product }) => {
             <CardMedia component="img" image={imagePreviewUrl} alt="Product Preview" sx={{ maxHeight: 300, objectFit: 'contain' }} />
           </Card>
         )}
-        <Box sx={{ display: 'flex', gap: 2, mb: imagePreviewUrl ? 1 : 0 }}>
-          <Button variant="outlined" component="label" fullWidth>
-            {imagePreviewUrl ? '更换图片' : '上传图片'}
+        <Box sx={{ display: 'flex', gap: 1, mb: imagePreviewUrl ? 1 : 2 }}>
             <input type="file" accept="image/*" hidden onChange={handleFileChange} ref={fileInputRef} />
-          </Button>
-          {imagePreviewUrl && <Button variant="outlined" color="error" onClick={handleRemoveImage}>移除</Button>}
+            <input type="file" accept="image/*" capture="environment" hidden onChange={handleFileChange} ref={cameraInputRef} />
+            <Button variant="outlined" onClick={() => fileInputRef.current?.click()} fullWidth>从相册选择</Button>
+            <Button variant="outlined" onClick={() => cameraInputRef.current?.click()} fullWidth>拍摄照片</Button>
+            {imagePreviewUrl && <Button variant="outlined" color="error" onClick={handleRemoveImage}>移除</Button>}
         </Box>
         <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'name', value: e.target.value } })} fullWidth />
         <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'price', value: e.target.value } })} fullWidth />
