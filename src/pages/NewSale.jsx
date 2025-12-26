@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useCart } from '../CartContext';
-import { Box, Fab, Badge, Typography } from '@mui/material';
+import { Box, Fab, Badge, Typography, Chip } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PageHeader from '../components/PageHeader';
 import ProductCard from '../components/ProductCard';
@@ -12,7 +12,16 @@ import CartDrawer from '../components/CartDrawer';
 
 const NewSale = () => {
   const { cart, handleAddToCart, handleCheckout } = useCart();
-  const products = useLiveQuery(() => db.products.orderBy('createdAt').reverse().toArray(), []);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
+
+  const categories = useLiveQuery(() => db.categories.toArray(), []);
+  const products = useLiveQuery(() => {
+    if (selectedCategoryId === 'all') {
+      return db.products.orderBy('createdAt').reverse().toArray();
+    }
+    return db.products.where('categoryId').equals(selectedCategoryId).reverse().toArray();
+  }, [selectedCategoryId]);
+
   const paymentChannels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
@@ -43,8 +52,28 @@ const NewSale = () => {
   return (
     <Box>
       <PageHeader title="记账" />
+      
+      {categories && categories.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1, p: 2, overflowX: 'auto', flexWrap: 'nowrap' }}>
+          <Chip
+            label="所有商品"
+            variant={selectedCategoryId === 'all' ? 'filled' : 'outlined'}
+            onClick={() => setSelectedCategoryId('all')}
+          />
+          {categories.map(cat => (
+            <Chip
+              key={cat.id}
+              label={cat.name}
+              variant={selectedCategoryId === cat.id ? 'filled' : 'outlined'}
+              onClick={() => setSelectedCategoryId(cat.id)}
+            />
+          ))}
+        </Box>
+      )}
+
       <Box sx={{ 
         p: 2,
+        pt: 0, // Remove top padding as it's now on the filter box
         columnCount: 2,
         columnGap: '16px',
         paddingBottom: '80px' // Add padding for the FAB

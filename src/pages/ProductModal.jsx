@@ -13,7 +13,7 @@ const initialState = {
   step: 0,
   name: '',
   price: '',
-  description: '',
+  // description: '',
   stock: '',
   categoryId: '',
   attributes: [],
@@ -71,7 +71,7 @@ const ProductModal = ({ open, onClose, product }) => {
   const categories = useLiveQuery(() => db.categories.toArray(), []);
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { step, name, price, description, stock, categoryId, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
+  const { step, name, price, stock, categoryId, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
 
   const stepperSteps = ['基本信息', '定义属性', '设置库存'];
   const attributeNameOptions = ['尺码', '颜色'];
@@ -94,7 +94,7 @@ const ProductModal = ({ open, onClose, product }) => {
             payload: {
               name: product.name || '',
               price: product.price ? String(product.price) : '',
-              description: product.description || '',
+              // description: product.description || '',
               categoryId: product.categoryId || '',
               attributes: product.attributes || [],
               variants: productVariants,
@@ -188,8 +188,8 @@ const ProductModal = ({ open, onClose, product }) => {
 
   const handleNext = () => {
     if (step === 0) {
-      if (!name.trim() || !price) {
-        showNotification('请填写产品名称和价格', 'warning');
+      if (!name.trim()) { // Removed !price validation
+        showNotification('请填写产品名称', 'warning');
         return;
       }
       if (attributes.length === 0) dispatch({ type: 'ADD_ATTRIBUTE' });
@@ -201,8 +201,8 @@ const ProductModal = ({ open, onClose, product }) => {
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !price) {
-        showNotification('请填写产品名称和价格', 'warning');
+    if (!name.trim()) { // Removed !price validation
+        showNotification('请填写产品名称', 'warning');
         return;
     }
 
@@ -222,8 +222,8 @@ const ProductModal = ({ open, onClose, product }) => {
     try {
       const productData = {
         name: trimmedName,
-        price: parseFloat(price),
-        description,
+        price: parseFloat(price || 0), // Default to 0 if price is empty
+        // description,
         categoryId,
         attributes: showAttributes ? validAttributes : [],
         variants: showAttributes ? variants.map(v => ({ ...v, stock: parseInt(v.stock, 10) || 0 })) : [],
@@ -284,7 +284,7 @@ const ProductModal = ({ open, onClose, product }) => {
             ))}
           </Select>
         </FormControl>
-        <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth />
+        {/* <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth /> */}
       </>
     );
 
