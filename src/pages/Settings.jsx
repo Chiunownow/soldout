@@ -200,10 +200,16 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey, 
         if (imageBlobs.length > 0) {
           await db.productImages.bulkAdd(imageBlobs);
         }
-        
+
+        const importedOrders = state.importData.orders || [];
+        const sanitizedOrders = importedOrders.map(order => ({
+          ...order,
+          createdAt: new Date(order.createdAt),
+        }));
+
         await Promise.all([
           db.products.bulkAdd(state.importData.products || []),
-          db.orders.bulkAdd(state.importData.orders || []),
+          db.orders.bulkAdd(sanitizedOrders),
           db.paymentChannels.bulkAdd(state.importData.paymentChannels || []),
         ]);
       });
