@@ -41,9 +41,14 @@ const ProductCard = ({ product, onClick }) => {
           <Typography gutterBottom variant="h6" component="div">
             {productWithImage.name}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            库存: {productWithImage.stock}
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              库存: {productWithImage.stock}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              ¥{productWithImage.price.toFixed(2)}
+            </Typography>
+          </Box>
         </CardContent>
       </CardActionArea>
     </Card>
