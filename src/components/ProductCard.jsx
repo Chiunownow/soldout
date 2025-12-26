@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardActionArea, CardMedia, CardContent, Typography, Box } from '@mui/material';
 import useProductWithImage from '../hooks/useProductWithImage';
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onClick }) => {
   const productWithImage = useProductWithImage(product);
 
   if (!productWithImage) {
@@ -15,7 +15,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <Card sx={{ breakInside: 'avoid-column', mb: 2 }}>
-      <CardActionArea>
+      <CardActionArea onClick={onClick}>
         {productWithImage.imageUrl ? (
           <CardMedia
             component="img"
