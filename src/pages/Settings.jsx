@@ -221,6 +221,7 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey, 
     try {
       await db.delete();
       localStorage.removeItem('hasSeenWelcome');
+      localStorage.removeItem('homePageLayout');
       showNotification('所有数据已清除，应用将刷新', 'success');
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
