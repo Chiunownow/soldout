@@ -5,7 +5,6 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import AppsIcon from '@mui/icons-material/Apps';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import SettingsIcon from '@mui/icons-material/Settings';
-import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
 import Sale from './pages/Sale'
 import Inventory from './pages/Inventory'
 import Orders from './pages/Orders'
@@ -73,17 +72,18 @@ const App = () => {
     { key: 'settings', title: '设置', icon: <SettingsIcon /> },
   ];
 
-  if (isDevMode) {
-    tabs.push({ key: 'dev', title: '开发者', icon: <DeveloperModeIcon /> });
-  }
-
   const renderContent = () => {
     switch (activeKey) {
       case 'sale': return <Sale />;
       case 'inventory': return <Inventory />;
       case 'orders': return <Orders />;
       case 'stats': return <Stats />;
-      case 'settings': return <Settings showInstallButton={showInstallButton} onInstallClick={handleInstallClick} />;
+      case 'settings': return <Settings 
+          showInstallButton={showInstallButton}
+          onInstallClick={handleInstallClick}
+          isDevMode={isDevMode}
+          setActiveKey={setActiveKey}
+        />;
       case 'dev': return isDevMode ? <DevImageViewer /> : <Sale />;
       default: return <Sale />;
     }

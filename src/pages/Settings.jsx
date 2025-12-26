@@ -29,7 +29,7 @@ function reducer(state, action) {
   }
 }
 
-const Settings = ({ showInstallButton, onInstallClick }) => {
+const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }) => {
   const { showNotification } = useNotification();
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -232,6 +232,17 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
           </CardContent>
         </Card>
 
+        {isDevMode && (
+          <Card sx={{ mt: 2 }}>
+            <CardContent>
+                <Typography variant="h6" gutterBottom>开发者选项</Typography>
+                <Button fullWidth variant="outlined" onClick={() => setActiveKey('dev')}>
+                  浏览已上传的图片
+                </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card sx={{ mt: 2 }}>
           <CardContent>
               <Typography variant="h6" color="error" gutterBottom>危险区域</Typography>
@@ -257,5 +268,4 @@ const Settings = ({ showInstallButton, onInstallClick }) => {
     </>
   );
 };
-
 export default Settings;
