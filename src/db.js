@@ -2,6 +2,13 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('salesApp');
 
+db.version(4).stores({
+  products: '++id, name, createdAt',
+  orders: '++id, createdAt, status',
+  paymentChannels: '++id, &name',
+  cart: 'cartItemId', 
+});
+
 db.version(3).stores({
   products: '++id, name',
   orders: '++id, createdAt, status',
