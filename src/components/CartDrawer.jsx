@@ -50,8 +50,11 @@ const CartDrawer = ({ open, onClose, onCheckout }) => {
                   />
                 }
               >
-                <IconButton onClick={() => handleGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1 }}>
-                  <CardGiftcardIcon color={item.isGift ? 'primary' : 'disabled'} />
+                <IconButton onClick={() => handleGiftToggle(item.cartItemId, !item.isGift)} sx={{ mr: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', p: 0 }}>
+                  <CardGiftcardIcon color={item.isGift ? 'warning' : 'disabled'} />
+                  <Typography variant="caption" sx={{ lineHeight: 1 }} color={item.isGift ? 'warning.main' : 'text.disabled'}>
+                    赠品
+                  </Typography>
                 </IconButton>
                 <ListItemText
                   primary={item.name}

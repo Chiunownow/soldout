@@ -1,7 +1,7 @@
 import React, { useReducer, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Button, Chip, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { useNotification } from '../NotificationContext';
@@ -30,10 +30,17 @@ function reducer(state, action) {
   }
 }
 
-const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }) => {
+const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey, layoutMode, onLayoutChange }) => {
   const { showNotification } = useNotification();
   const channels = useLiveQuery(() => db.paymentChannels.toArray(), []);
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  const handleLayoutChange = (event, newLayout) => {
+    if (newLayout) {
+      onLayoutChange(newLayout);
+      showNotification('首页布局已切换', 'success');
+    }
+  };
 
   const longPressEvents = useLongPress(
     () => dispatch({ type: 'OPEN_DIALOG', payload: 'clearData' }),
@@ -224,7 +231,7 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
   return (
     <>
       <PageHeader title="设置" />
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: 2, pb: 10 }}>
         {showInstallButton && (
           <Card sx={{ mb: 2 }}>
             <CardContent>
@@ -246,6 +253,25 @@ const Settings = ({ showInstallButton, onInstallClick, isDevMode, setActiveKey }
               ))}
             </List>
             <Button fullWidth variant="outlined" onClick={() => dispatch({ type: 'OPEN_DIALOG', payload: 'addChannel' })} sx={{ mt: 2 }}>添加新渠道</Button>
+          </CardContent>
+        </Card>
+        
+        <Card sx={{ mt: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>首页布局</Typography>
+            <ToggleButtonGroup
+              color="primary"
+              value={layoutMode}
+              exclusive
+              onChange={handleLayoutChange}
+              fullWidth
+            >
+              <ToggleButton value="traditional">传统</ToggleButton>
+              <ToggleButton value="masonry">双列瀑布流</ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              切换首页商品列表的显示方式。
+            </Typography>
           </CardContent>
         </Card>
 

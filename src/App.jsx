@@ -17,10 +17,7 @@ import { db } from './db'
 
 const App = () => {
   const [activeKey, setActiveKey] = useState('sale');
-  const [isNewHome] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('newhome') === 'true';
-  });
+  const [layoutMode, setLayoutMode] = useState(localStorage.getItem('homePageLayout') || 'masonry');
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
@@ -54,6 +51,13 @@ const App = () => {
     };
   }, []);
 
+  const handleLayoutChange = (newLayout) => {
+    if (newLayout !== null) {
+      setLayoutMode(newLayout);
+      localStorage.setItem('homePageLayout', newLayout);
+    }
+  };
+
   const handleConfirmWelcome = () => {
     localStorage.setItem('hasSeenWelcome', 'true');
     setWelcomeDialogOpen(false);
@@ -77,7 +81,7 @@ const App = () => {
 
   const renderContent = () => {
     switch (activeKey) {
-      case 'sale': return isNewHome ? <NewSale /> : <Sale />;
+      case 'sale': return layoutMode === 'masonry' ? <NewSale /> : <Sale />;
       case 'inventory': return <Inventory />;
       case 'orders': return <Orders />;
       case 'stats': return <Stats />;
@@ -86,6 +90,8 @@ const App = () => {
           onInstallClick={handleInstallClick}
           isDevMode={isDevMode}
           setActiveKey={setActiveKey}
+          layoutMode={layoutMode}
+          onLayoutChange={handleLayoutChange}
         />;
       case 'dev': return isDevMode ? <DevImageViewer /> : <Sale />;
       default: return <Sale />;

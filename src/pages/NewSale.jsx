@@ -58,7 +58,7 @@ const NewSale = () => {
             />
           ))
         ) : (
-          <Box sx={{ textAlign: 'center', mt: 8, p: 2, gridColumn: '1 / -1' }}>
+          <Box sx={{ columnSpan: 'all', textAlign: 'center', mt: 8, p: 2 }}>
               <Typography variant="subtitle1">还没有产品，快去库存页添加吧</Typography>
               <Typography variant="body2" color="text.secondary">小贴士：产品图片，名称，库存都会在这里显示哦！</Typography>
           </Box>
