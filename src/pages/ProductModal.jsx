@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useReducer, useRef, useCallback } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel, Card, CardMedia } from '@mui/material';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, IconButton, Typography, FormControlLabel, Checkbox, Autocomplete, Stepper, Step, StepLabel, Card, CardMedia, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { db } from '../db';
@@ -14,6 +15,7 @@ const initialState = {
   price: '',
   description: '',
   stock: '',
+  categoryId: '',
   attributes: [],
   variants: [],
   showAttributes: false,
@@ -66,9 +68,10 @@ const ProductModal = ({ open, onClose, product }) => {
   const isEditMode = !!product;
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const categories = useLiveQuery(() => db.categories.toArray(), []);
 
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { step, name, price, description, stock, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
+  const { step, name, price, description, stock, categoryId, attributes, variants, showAttributes, imagePreviewUrl, processedImageBlob, isImageRemoved } = state;
 
   const stepperSteps = ['基本信息', '定义属性', '设置库存'];
   const attributeNameOptions = ['尺码', '颜色'];
@@ -92,6 +95,7 @@ const ProductModal = ({ open, onClose, product }) => {
               name: product.name || '',
               price: product.price ? String(product.price) : '',
               description: product.description || '',
+              categoryId: product.categoryId || '',
               attributes: product.attributes || [],
               variants: productVariants,
               showAttributes: hasAttributes,
@@ -220,6 +224,7 @@ const ProductModal = ({ open, onClose, product }) => {
         name: trimmedName,
         price: parseFloat(price),
         description,
+        categoryId,
         attributes: showAttributes ? validAttributes : [],
         variants: showAttributes ? variants.map(v => ({ ...v, stock: parseInt(v.stock, 10) || 0 })) : [],
         stock: showAttributes ? totalStock : (parseInt(stock, 10) || 0),
@@ -266,6 +271,19 @@ const ProductModal = ({ open, onClose, product }) => {
         </Box>
         <TextField label="产品名称" placeholder="例如：T恤" value={name} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'name', value: e.target.value } })} fullWidth />
         <TextField label="销售价格" placeholder="例如：99.00" type="number" value={price} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'price', value: e.target.value } })} fullWidth />
+        <FormControl fullWidth>
+          <InputLabel>分类</InputLabel>
+          <Select
+            value={categoryId}
+            label="分类"
+            onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'categoryId', value: e.target.value } })}
+          >
+            <MenuItem value=""><em>无</em></MenuItem>
+            {categories?.map(cat => (
+              <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField label="文字描述" placeholder="可选" value={description} onChange={e => dispatch({ type: 'SET_FIELD', payload: { field: 'description', value: e.target.value } })} fullWidth />
       </>
     );

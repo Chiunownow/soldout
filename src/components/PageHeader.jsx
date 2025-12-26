@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 
-const PageHeader = React.memo(({ title }) => {
+const PageHeader = React.memo(({ title, action }) => {
   return (
     <Box sx={{
       padding: '16px',
@@ -17,7 +17,7 @@ const PageHeader = React.memo(({ title }) => {
       <Typography variant="h6" component="h1" sx={{ textAlign: 'left', flexGrow: 1 }}>
         {title}
       </Typography>
-      <img src="/favicon.svg" alt="App Favicon" style={{ height: '32px', width: '32px', marginLeft: '16px' }} />
+      {action || <img src="/favicon.svg" alt="App Favicon" style={{ height: '32px', width: '32px', marginLeft: '16px' }} />}
     </Box>
   );
 });

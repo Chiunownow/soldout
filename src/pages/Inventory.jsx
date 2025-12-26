@@ -1,19 +1,27 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { List, Fab, Typography, Box } from '@mui/material';
+import { List, Fab, Typography, Box, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useNotification } from '../NotificationContext';
 import ProductModal from './ProductModal';
 import PageHeader from '../components/PageHeader';
 import ProductListItem from '../components/ProductListItem';
+import CategoryManagerDialog from '../components/settings/CategoryManagerDialog';
 
 const Inventory = () => {
   const { showNotification } = useNotification();
   const products = useLiveQuery(() => db.products.orderBy('createdAt').reverse().toArray(), []);
+  const categories = useLiveQuery(() => db.categories.toArray(), []);
   
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+
+  const categoryMap = useMemo(() => {
+    if (!categories) return new Map();
+    return new Map(categories.map(cat => [cat.id, cat.name]));
+  }, [categories]);
 
   const handleAddProduct = useCallback(() => {
     setEditingProduct(null);
@@ -42,7 +50,14 @@ const Inventory = () => {
 
   return (
     <>
-      <PageHeader title="库存" />
+      <PageHeader 
+        title="库存"
+        action={
+          <Button variant="outlined" size="small" onClick={() => setCategoryManagerOpen(true)}>
+            分类管理
+          </Button>
+        }
+      />
       <Box sx={{ paddingBottom: '80px' }}> {/* Padding for the FAB */}
         {products && products.length > 0 ? (
           <List>
@@ -50,6 +65,7 @@ const Inventory = () => {
               <ProductListItem
                 key={product.id}
                 product={product}
+                categoryName={categoryMap.get(product.categoryId)}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
               />
@@ -80,6 +96,11 @@ const Inventory = () => {
         open={modalOpen}
         onClose={handleCloseModal}
         product={editingProduct}
+      />
+
+      <CategoryManagerDialog
+        open={categoryManagerOpen}
+        onClose={() => setCategoryManagerOpen(false)}
       />
     </>
   );

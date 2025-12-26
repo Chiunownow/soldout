@@ -3,7 +3,7 @@ import { ListItem, ListItemText, ListItemSecondaryAction, IconButton, Typography
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const ProductListItem = React.memo(({ product, onEdit, onDelete }) => {
+const ProductListItem = React.memo(({ product, categoryName, onEdit, onDelete }) => {
   return (
     <ListItem 
       divider
@@ -20,6 +20,7 @@ const ProductListItem = React.memo(({ product, onEdit, onDelete }) => {
             )}
             <Typography component="span" variant="body2" color="text.primary">
               总库存: {product.stock || 0}
+              {categoryName && ` | 分类: ${categoryName}`}
             </Typography>
             {product.variants && product.variants.length > 0 ? (
               <Box component="div" sx={{ mt: 1, pl: 1, borderLeft: '2px solid #eee' }}>
