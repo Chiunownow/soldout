@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useCart } from '../CartContext';
-import { Box, Fab } from '@mui/material';
+import { Box, Fab, Badge } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PageHeader from '../components/PageHeader';
 import ProductCard from '../components/ProductCard';
 import PaymentPickerDialog from './PaymentPickerDialog';
 import VariantSelector from './VariantSelector';
+import CartDrawer from '../components/CartDrawer';
 
 const NewSale = () => {
   const { cart, handleAddToCart, handleCheckout } = useCart();
@@ -17,6 +18,7 @@ const NewSale = () => {
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
   const [variantSelectorVisible, setVariantSelectorVisible] = useState(false);
   const [productForVariantSelection, setProductForVariantSelection] = useState(null);
+  const [cartDrawerVisible, setCartDrawerVisible] = useState(false);
 
   const handleProductClick = (product) => {
     if (product.variants && product.variants.length > 0) {
@@ -31,6 +33,11 @@ const NewSale = () => {
     handleAddToCart(product, variant);
   };
 
+  const handleCheckoutClick = () => {
+    setCartDrawerVisible(false);
+    setPaymentPickerVisible(true);
+  };
+
   return (
     <Box>
       <PageHeader title="记账" />
@@ -38,6 +45,7 @@ const NewSale = () => {
         p: 2,
         columnCount: 2,
         columnGap: '16px',
+        paddingBottom: '80px' // Add padding for the FAB
        }}>
         {products && products.map(product => (
           <ProductCard 
@@ -51,15 +59,17 @@ const NewSale = () => {
       {cart.length > 0 && (
         <Fab
           color="primary"
-          aria-label="checkout"
+          aria-label="cart"
           sx={{
             position: 'fixed',
             bottom: 80,
             right: 24,
           }}
-          onClick={() => setPaymentPickerVisible(true)}
+          onClick={() => setCartDrawerVisible(true)}
         >
-          <ShoppingCartIcon />
+          <Badge badgeContent={cart.length} color="error">
+            <ShoppingCartIcon />
+          </Badge>
         </Fab>
       )}
 
@@ -75,6 +85,12 @@ const NewSale = () => {
         product={productForVariantSelection}
         onClose={() => setVariantSelectorVisible(false)}
         onSelect={handleVariantSelect}
+      />
+
+      <CartDrawer
+        open={cartDrawerVisible}
+        onClose={() => setCartDrawerVisible(false)}
+        onCheckout={handleCheckoutClick}
       />
     </Box>
   );
